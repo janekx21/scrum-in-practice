@@ -18,6 +18,11 @@
           buildInputs = with pkgs; [
             nodejs
             corepack
+
+            # nodePackages."@volar/vue-language-server"
+            vue-language-server
+            typescript-language-server
+
           ];
         };
       }
