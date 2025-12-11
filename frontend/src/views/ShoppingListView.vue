@@ -1,9 +1,9 @@
 <script setup lang="ts">
 // import TheWelcome from '../components/TheWelcome.vue'
 
-import { newShoppingListItem, useShoppingListStore } from '@/stores/shoppingList.ts'
-import { useRoute } from 'vue-router'
-import { computed } from 'vue'
+import {newShoppingListItem, useShoppingListStore} from '@/stores/shoppingList.ts'
+import {useRoute} from 'vue-router'
+import {computed} from 'vue'
 
 const store = useShoppingListStore()
 
@@ -28,9 +28,7 @@ const shoppingList = typeof id == 'string' ? store.getById(id) : computed(() => 
             <input
               class="form-check-input mt-0"
               type="checkbox"
-              :checked="item.state == 'done'"
-              @change="(x) => (item.state = x.target['checked'] ? 'done' : 'todo')"
-              aria-label="Checkbox for following text input"
+              v-model="item.done"
             />
           </div>
           <input
