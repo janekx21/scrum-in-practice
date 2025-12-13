@@ -33,6 +33,9 @@
             ruff
             python3Packages.jedi-language-server
             python3Packages.python-lsp-server
+
+            # REST API dev
+            restish
           ];
         };
       }
