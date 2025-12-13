@@ -3,6 +3,36 @@ from typing import TypedDict
 import sqlite3
 import uuid
 
+# Notes 
+# =====
+# Stuff that are common to add for larger apps found below.
+# 
+# Common Flask Extensions
+# - Flask-SQLAlchemy: ORM for databases
+# - Flask-Migrate: Database migrations (like Alembic)
+# - Flask-CORS: Handle CORS for frontend apps
+# - Flask-JWT-Extended: Authentication with JWT tokens
+# - Marshmallow: Request/response validation & serialization
+# - Testing stuff: pytest pytest-flask
+#
+# Propper project structure
+# 
+# project/
+# ├── app/
+# │   ├── __init__.py          # Application factory
+# │   ├── models.py            # Database models/queries
+# │   ├── routes/              # Route handlers (controllers)
+# │   │   ├── shopping_lists.py
+# │   │   └── auth.py
+# │   ├── services.py          # Business logic
+# │   └── schemas.py           # Validation (with marshmallow/pydantic)
+# ├── config.py                # Configuration classes
+# ├── tests/
+# │   ├── __init__.py
+# │   ├── conftest.py        # Test fixtures @pytest.fixture, mocks db and stuff
+# │   └── test_shopping_lists.py
+# └── run.py                   # Entry point 
+
 DATABASE = "main.db"
 
 class ShoppingList(TypedDict):
