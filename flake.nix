@@ -16,13 +16,23 @@
       {
         devShells.default = pkgs.mkShell {
           buildInputs = with pkgs; [
+            # Nodejs and pnpm
             nodejs
             corepack
 
-            # nodePackages."@volar/vue-language-server"
+            # Node dev
             vue-language-server
             typescript-language-server
 
+            # Python with libs
+            python3
+            python3Packages.flask
+
+            # Python dev
+            ty
+            ruff
+            python3Packages.jedi-language-server
+            python3Packages.python-lsp-server
           ];
         };
       }
