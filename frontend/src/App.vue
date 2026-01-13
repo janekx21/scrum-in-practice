@@ -26,7 +26,7 @@ import HelloWorld from './components/HelloWorld.vue'
               <!--              <a class="nav-link active" aria-current="page" href="#">Home</a>-->
             </li>
             <li class="nav-item">
-              <RouterLink class="nav-link" to="/shopping-list">Shoppig List</RouterLink>
+              <RouterLink class="nav-link" to="/shopping-list">Shopping List</RouterLink>
               <!--              <a class="nav-link active" aria-current="page" href="#">Home</a>-->
             </li>
             <li class="nav-item">

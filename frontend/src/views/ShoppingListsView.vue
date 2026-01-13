@@ -1,14 +1,50 @@
 <script setup lang="ts">
-// import TheWelcome from '../components/TheWelcome.vue'
-
 import { useShoppingListStore } from '@/stores/shoppingList.ts'
+import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 
 const store = useShoppingListStore()
+const router = useRouter()
+
+const uuidInput = ref('')
+const statusMsg = ref('')
 </script>
 
 <template>
-  <main class="container">
+    <main class="container">
     <h1 class="mb-4">Shopping List</h1>
+      
+      <div class="input-group mb-3">
+      <input
+        class="form-control"
+        placeholder="Enter UUID (Share ID)"
+        v-model="uuidInput"
+      />
+      <button
+        class="btn btn-outline-secondary"
+        type="button"
+        @click="async () => {
+          statusMsg = ''
+          try {
+            const id = uuidInput.trim()
+            if (!id) return
+            await store.loadFromServer(id)
+            router.push('/shopping-list/' + id)
+          } catch (e: any) {
+            const msg = String(e)
+            if (msg.includes('404')) {
+              statusMsg = 'No such list. Create one.'
+            } else {
+              statusMsg = 'Load error: ' + msg
+            }
+          }
+        }"
+      >
+        Load
+      </button>
+    </div>
+
+    <div class="text-muted small mb-3" v-if="statusMsg">{{ statusMsg }}</div>
     <button class="btn btn-outline-primary mb-2 w-100" @click="store.addEmptyItem()">
       Add Shopping List
     </button>
