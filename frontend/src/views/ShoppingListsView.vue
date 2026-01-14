@@ -14,7 +14,6 @@ onMounted(() => store.fetchAllItems())
     <main class="container">
     <h1 class="mb-4">Shopping List</h1>
 
-    <div class="text-muted small mb-3" v-if="statusMsg">{{ statusMsg }}</div>
     <button class="btn btn-outline-primary mb-2 w-100" @click="store.addEmptyItem()">
       Add Shopping List
     </button>

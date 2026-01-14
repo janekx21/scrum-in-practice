@@ -2,19 +2,16 @@
 import { computed, ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { newShoppingListItem, useShoppingListStore } from '@/stores/shoppingList'
-import { createShoppingList, updateShoppingList, existsShoppingList } from '@/api/shoppingListApi'
+import { createShoppingList, updateShoppingList } from '@/api/shoppingListApi'
 
 const store = useShoppingListStore()
 const route = useRoute()
 const router = useRouter()
-const id = route.params.id
-
-const statusMsg = ref('')
+const id = typeof route.params.id === 'string' ? route.params.id : ""
 
 onMounted(() => store.fetchSingleItem(id))
 
 const shoppingList = computed(() => {
-  if (typeof id !== 'string') return undefined
   // store.getById(id) in your project is a computed; take its value
   return store.getById(id).value
 })
@@ -50,7 +47,6 @@ const shoppingList = computed(() => {
       </div>
     </div>
 
-    <div class="text-muted small mt-2" v-if="statusMsg">{{ statusMsg }}</div>
   </main>
 
   <main class="container" v-else>

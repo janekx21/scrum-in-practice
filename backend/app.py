@@ -36,15 +36,6 @@ import uuid
 
 DATABASE = "main.db"
 
-class ShoppingList(TypedDict):
-    id: str
-    name: str
-    items: list[str]
-
-class ShoppingListItem(TypedDict):
-    name: str
-    done: bool
-
 app = Flask(__name__)
 
 def get_db() -> sqlite3.Connection:
