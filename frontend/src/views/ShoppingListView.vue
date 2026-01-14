@@ -1,12 +1,10 @@
 <script setup lang="ts">
-import { computed, ref, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { newShoppingListItem, useShoppingListStore } from '@/stores/shoppingList'
-import { createShoppingList, updateShoppingList } from '@/api/shoppingListApi'
 
 const store = useShoppingListStore()
 const route = useRoute()
-const router = useRouter()
 const id = typeof route.params.id === 'string' ? route.params.id : ""
 
 onMounted(() => store.fetchSingleItem(id))

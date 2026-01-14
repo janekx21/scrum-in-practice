@@ -1,7 +1,6 @@
-import {computed, type ComputedRef, ref} from 'vue'
+import { computed, type ComputedRef, ref } from 'vue'
 import { createShoppingList, getAllShoppingLists, getShoppingList, updateShoppingList } from '@/api/shoppingListApi'
-import {defineStore} from 'pinia'
-import {v4 as uuid} from 'uuid'
+import { defineStore } from 'pinia'
 import type { ShoppingList, ShoppingListItem } from '@/model'
 
 
@@ -48,22 +47,7 @@ export const useShoppingListStore = defineStore(
     }
 
     async function fetchAllItems() {
-
-      const lists = await getAllShoppingLists()
-      items.value = lists
-
-      // for (const list of lists) {
-      //   items.value.push(list)
-      // }
-
-      // // already in local store?
-      // const existing = items.value.find((x) => x.id === serverId)
-      // if (existing) return existing.id
-
-      // const data = await getShoppingList(serverId)
-
-      // items.value.push()
-      // return localList.id
+      items.value = await getAllShoppingLists()
     }
 
     async function fetchSingleItem(id: string) {
@@ -76,7 +60,6 @@ export const useShoppingListStore = defineStore(
       } else {
         items.value.push(item)
       }
-
     }
 
     return {items, addEmptyItem, removeItem, getById, syncToServer, fetchAllItems, fetchSingleItem}

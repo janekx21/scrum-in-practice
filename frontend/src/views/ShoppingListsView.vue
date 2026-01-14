@@ -1,10 +1,8 @@
 <script setup lang="ts">
 import { useShoppingListStore } from '@/stores/shoppingList.ts'
-import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { onMounted } from 'vue'
 
 const store = useShoppingListStore()
-const router = useRouter()
 
 onMounted(() => store.fetchAllItems())
 
