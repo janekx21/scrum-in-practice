@@ -312,7 +312,17 @@ def main():
     ap.add_argument("-o", "--out", default="out.glb", help="Output .glb path (default: out.glb)")
     args = ap.parse_args()
 
-    inp = Path(args.input)
+
+    folder = Path(args.input)
+    files = sorted(folder.glob("*.bin"))
+    print("Found", len(files), "bin files")
+
+    for file in files:
+        print("Processing:", file.name)
+        convert(file, file.parent.joinpath("glbs").joinpath(file.name + ".glb"))
+
+def convert(input_path, output_path):
+    inp = Path(input_path)
     bin_path = pick_first_bin(inp)
 
     raw = bin_path.read_bytes()
@@ -337,7 +347,7 @@ def main():
     V, F, C = merge_blocks_to_single_mesh(vertices, triangles, colors, meshheader)
     glb = export_glb(V, F, C)
 
-    out_path = Path(args.out)
+    out_path = Path(output_path)
     out_path.write_bytes(glb)
 
     st = outer.get("stamp") or {}
@@ -347,7 +357,6 @@ def main():
     print("Chunks:", chunks, "Payload bytes:", len(payload))
     print("Merged:", f"V={len(V)} T={len(F)} Colors={'yes' if C is not None else 'no'}")
     print("MeshHeader:", f"frame_id={meshheader.get('frame_id')}, message_id={meshheader.get('message_id')}, block_size={meshheader.get('block_size')}")
-
 
 if __name__ == "__main__":
     main()
