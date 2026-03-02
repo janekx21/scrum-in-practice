@@ -179,18 +179,20 @@ def shopping_list_create():
     
     return {"id": new_id, "name": json['name'], "items": []}, 201
 
-# 1. This endpoint tells the frontend which model to load
-@app.route("/api/v2/scan/<scan_id>")
+@app.route("/scan/<scan_id>")
 def get_scan_metadata(scan_id):
-    # In a real app, you'd check a database. For now, we return the paths.
     return {
         "id": scan_id,
-        "modelUrl": f"/api/v2/models/{scan_id}.glb",
+        "modelUrl": f"/api/models/{scan_id}.glb", # Note: keep /api here so the frontend can find it through the proxy
         "format": "glb",
         "timestamp": "2026-03-02"
     }
 
-# 2. This endpoint serves the actual binary GLB file
-@app.route("/api/v2/models/<filename>.glb")
+# 2. Matches /models/<filename>.glb
+@app.route("/models/<filename>.glb")
 def serve_model(filename):
     return send_from_directory("assets", f"{filename}.glb", mimetype='model/gltf-binary')
+
+
+if __name__ == "__main__":
+    app.run(debug=True, port=5001)

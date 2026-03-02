@@ -15,7 +15,6 @@ import { useThreeStore } from '@/stores/useThreeStore'
 const store = useThreeStore()
 
 onMounted(() => {
-  // Replace 'building_scan_01' with your actual filename
-  store.loadScan('building_scan_01')
+  store.loadScan('sample_building')
 })
 </script>
