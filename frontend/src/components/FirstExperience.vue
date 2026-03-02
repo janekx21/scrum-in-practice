@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useLoop } from '@tresjs/core'
 import { ref } from 'vue'
-import { OrbitControls, useTweakPane } from '@tresjs/cientos';
+import { OrbitControls } from '@tresjs/cientos';
 import GLTFExample from './GLTFExample.vue'
 
 //// Reference to our donut mesh for animation
