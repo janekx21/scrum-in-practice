@@ -320,6 +320,7 @@ def main():
     for file in files:
         print("Processing:", file.name)
         convert(file, file.parent.joinpath("glbs").joinpath(file.name + ".glb"))
+    print("Done")
 
 def convert(input_path, output_path):
     inp = Path(input_path)
@@ -332,10 +333,7 @@ def convert(input_path, output_path):
     v_cnt = int(meshheader.get("vertex_count", 0) or 0)
     t_cnt = int(meshheader.get("triangle_count", 0) or 0)
     if v_cnt == 0 or t_cnt == 0:
-        raise SystemExit(
-            f"Chosen file has no geometry (vertex_count={v_cnt}, triangle_count={t_cnt}). "
-            f"Pick a different .bin with actual mesh data."
-        )
+        return
 
     vertices, triangles, normals, colors = decode_global_arrays(payload, meshheader, end_off)
 
