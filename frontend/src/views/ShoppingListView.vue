@@ -1,60 +1,19 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { newShoppingListItem, useShoppingListStore } from '@/stores/shoppingList'
-import { createShoppingList, updateShoppingList, existsShoppingList } from '@/api/shoppingListApi'
 
 const store = useShoppingListStore()
 const route = useRoute()
-const router = useRouter()
+const id = typeof route.params.id === 'string' ? route.params.id : ""
 
-const statusMsg = ref('')
-
+onMounted(() => store.fetchSingleItem(id))
 
 const shoppingList = computed(() => {
-  const id = route.params.id
-  if (typeof id !== 'string') return undefined
   // store.getById(id) in your project is a computed; take its value
   return store.getById(id).value
 })
 
-async function save() {
-  statusMsg.value = ''
-
-  const list = shoppingList.value
-  if (!list) {
-    statusMsg.value = 'No list loaded.'
-    return
-  }
-
-  const routeId = String(route.params.id)
-
-  const payload = {
-    name: list.name,
-    items: list.items.map((i) => i.text),
-  }
-
-    const exists = await existsShoppingList(routeId)
-
-  if (exists) {
-    await updateShoppingList(routeId, payload)
-    statusMsg.value = 'Saved. UUID: ' + routeId
-    return
-  }
-
-  // Create a new list first
-  const created = await createShoppingList({ name: payload.name, items: [] })
-
-  // Then push items/name into DB using update endpoint
-  await updateShoppingList(created.id, payload)
-
-    list.id = created.id
-  list.serverId = created.id
-
-  statusMsg.value = 'Created & saved. UUID: ' + created.id
-
-    router.replace('/shopping-list/' + created.id)
-}
 </script>
 
 <template>
@@ -74,24 +33,18 @@ async function save() {
       <div class="list-group-item" v-for="(item, i) in shoppingList.items" :key="i">
         <div class="input-group">
           <div class="input-group-text">
-            <input class="form-check-input mt-0" type="checkbox" v-model="item.done" />
+            <input class="form-check-input mt-0" type="checkbox" v-model="item.done" @change="store.syncToServer(id)" />
           </div>
 
-          <input type="text" class="form-control" placeholder="Item" v-model="item.text" />
+          <input type="text" class="form-control" placeholder="Item" v-model="item.text" @change="store.syncToServer(id)" />
 
-          <button class="btn btn-outline-danger" type="button" @click="shoppingList.items.splice(i, 1)">
+          <button class="btn btn-outline-danger" type="button" @click="shoppingList.items.splice(i, 1); store.syncToServer(id)">
             Delete
           </button>
         </div>
       </div>
     </div>
 
-    <!-- Save button -->
-    <button class="btn btn-success w-100" @click="save">
-      Save
-    </button>
-
-    <div class="text-muted small mt-2" v-if="statusMsg">{{ statusMsg }}</div>
   </main>
 
   <main class="container" v-else>

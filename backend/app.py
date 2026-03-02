@@ -1,3 +1,4 @@
+from flask.helpers import make_response
 from flask import Flask, request, abort, g
 from typing import TypedDict
 import sqlite3
@@ -35,11 +36,6 @@ import uuid
 
 DATABASE = "main.db"
 
-class ShoppingList(TypedDict):
-    id: str
-    name: str
-    items: list[str]
-
 app = Flask(__name__)
 
 def get_db() -> sqlite3.Connection:
@@ -69,6 +65,7 @@ def init_db():
     cur.execute("""
         CREATE TABLE IF NOT EXISTS shopping_list_items(
             text TEXT NOT NULL, 
+            done BOOLEAN NOT NULL,
             shopping_list TEXT NOT NULL,
             FOREIGN KEY(shopping_list) REFERENCES shopping_lists(id) ON DELETE CASCADE
         )
@@ -80,10 +77,24 @@ def init_db():
 with app.app_context():
     init_db()
 
+
+@app.before_request
+def handle_options():
+    if request.method == "OPTIONS":
+        response = make_response("OK", 200)
+        return response
+
+
+@app.after_request
+def add_headers(response):
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+    return response    
+
 @app.route("/")
 def hello_world():
     return "<p>Hello, World 2!</p>"
-
 
 @app.get("/shopping-list/")
 def shopping_list_all_get():
@@ -107,8 +118,8 @@ def shopping_list_single_get(id: uuid.UUID):
 
     (id, name) = row
 
-    res = cur.execute("SELECT text FROM shopping_list_items WHERE shopping_list = :id", {'id': str(id)})
-    items = list(map(lambda row: row[0], res.fetchall())) 
+    res = cur.execute("SELECT text, done FROM shopping_list_items WHERE shopping_list = :id", {'id': str(id)})
+    items = list(map(lambda row: {"text": row["text"], "done": row["done"] == 1}, res.fetchall())) 
 
     shopping_list = {
         'id': id,
@@ -118,7 +129,7 @@ def shopping_list_single_get(id: uuid.UUID):
     
     return shopping_list
 
-@app.post("/shopping-list/<uuid:id>")
+@app.patch("/shopping-list/<uuid:id>")
 def shopping_list_single_post(id: uuid.UUID):
     json = request.json
     if json is None:
@@ -129,18 +140,19 @@ def shopping_list_single_post(id: uuid.UUID):
     cur = db.cursor()
 
     try:
-
-
         if 'name' in json and isinstance(json['name'], str):
             cur.execute("UPDATE shopping_lists SET name = :name WHERE id = :id", {'id': str(id), 'name': json['name']})
 
         if 'items' in json and isinstance(json['items'], list):
-            data = list(map(lambda item: {'shopping_list': str(id), 'text': item}, json['items']))
+            data = list(map(lambda item:
+                {'shopping_list': str(id), 'text': item['text'], 'done': item['done']}, json['items']))
+            
             cur.execute("DELETE FROM shopping_list_items WHERE shopping_list=:shopping_list", {'shopping_list': str(id)})
-            cur.executemany("INSERT INTO shopping_list_items (text, shopping_list) VALUES (:text, :shopping_list)", data)
+            print(data)
+            cur.executemany("INSERT INTO shopping_list_items (text, shopping_list, done) VALUES (:text, :shopping_list, :done)", data)
 
         db.commit()
-        return {"status": "ok"}
+        return {"ok": True}
 
     except sqlite3.Error as e:
             db.rollback()
@@ -164,4 +176,4 @@ def shopping_list_create():
     cur.execute("INSERT INTO shopping_lists (id, name) VALUES (:id, :name)", {"id": new_id, "name": name})
     db.commit()
     
-    return {"id": new_id, "name": json['name']}, 201
+    return {"id": new_id, "name": json['name'], "items": []}, 201

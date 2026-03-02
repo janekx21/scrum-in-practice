@@ -24,6 +24,7 @@
     "@popperjs/core": "^2.11.8",
     "@types/bootstrap": "^5.2.10",
     "bootstrap": "^5.3.8",
+    "mande": "^2.0.9",
     "pinia": "^3.0.4",
     "pinia-plugin-persistedstate": "^4.7.1",
     "uuid": "^13.0.0",
