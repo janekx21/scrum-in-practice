@@ -3,6 +3,7 @@ from flask import Flask, request, abort, g
 from typing import TypedDict
 import sqlite3
 import uuid
+from flask import send_from_directory
 
 # Notes 
 # =====
@@ -177,3 +178,21 @@ def shopping_list_create():
     db.commit()
     
     return {"id": new_id, "name": json['name'], "items": []}, 201
+
+@app.route("/scan/<scan_id>")
+def get_scan_metadata(scan_id):
+    return {
+        "id": scan_id,
+        "modelUrl": f"/api/models/{scan_id}.glb", # Note: keep /api here so the frontend can find it through the proxy
+        "format": "glb",
+        "timestamp": "2026-03-02"
+    }
+
+# 2. Matches /models/<filename>.glb
+@app.route("/models/<filename>.glb")
+def serve_model(filename):
+    return send_from_directory("assets", f"{filename}.glb", mimetype='model/gltf-binary')
+
+
+if __name__ == "__main__":
+    app.run(debug=True, port=5001)

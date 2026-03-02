@@ -1,11 +1,11 @@
-export type ShoppingList = {
-  id: string
-  name: string
-  items: ShoppingListItem[]
+export interface MeshHeader {
+  blockIndices: number[];
+  [key: string]: any; 
 }
 
-export type ShoppingListItem = {
-  text: string
-  done: boolean
+export interface ScanMetadata {
+  id: string;
+  modelUrl: string;
+  format: string;
+  timestamp: string;
 }
-
