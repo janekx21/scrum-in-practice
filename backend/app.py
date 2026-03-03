@@ -1,9 +1,10 @@
 from flask.helpers import make_response
-from flask import Flask, request, abort, g
+from flask import Flask, request, abort, g, jsonify
 from typing import TypedDict
 import sqlite3
 import uuid
 from flask import send_from_directory
+from datetime import datetime
 
 # Notes 
 # =====
@@ -54,9 +55,10 @@ def close_db(error):
         db.close()
 
 def init_db():
-    """Initialize database schema"""
+    """Initialize database schema with the Scan table"""
     con = sqlite3.connect(DATABASE)
     cur = con.cursor()
+    # Existing tables (kept for compatibility)
     cur.execute("""
         CREATE TABLE IF NOT EXISTS shopping_lists(
             id TEXT PRIMARY KEY, 
@@ -71,10 +73,21 @@ def init_db():
             FOREIGN KEY(shopping_list) REFERENCES shopping_lists(id) ON DELETE CASCADE
         )
     """)
+    
+    # NEW SCAN TABLE
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS scans (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            upload_date TEXT NOT NULL,
+            upload_timestamp TEXT NOT NULL,
+            zip_file BLOB NOT NULL,
+            glb_file BLOB
+        )
+    """)
     con.commit()
     con.close()
 
-# Initialize DB on startup
 with app.app_context():
     init_db()
 
@@ -93,28 +106,36 @@ def add_headers(response):
     response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
     return response    
 
+@app.post("/upload")
+def upload_scan():
+    if 'file' not in request.files or 'name' not in request.form:
+        return jsonify({"error": "Missing file or name"}), 400
+    
+    file = request.files['file']
+    name = request.form['name']
+    
+    if file.filename == '' or not file.filename.endswith('.zip'):
+        return jsonify({"error": "Only .zip files are allowed"}), 400
 
-class StripApiPrefix:
-    """
-    WSGI middleware that removes the /api prefix from PATH_INFO before
-    the request reaches Flask. This runs before any routing occurs.
+    db = get_db()
+    cur = db.cursor()
+    
+    new_id = str(uuid.uuid4())
+    now = datetime.now()
+    upload_date = now.strftime("%Y-%m-%d")
+    upload_timestamp = now.strftime("%H:%M:%S")
+    file_content = file.read() # Read binary content
 
-    Usage:
-        app = Flask(__name__)
-        app.wsgi_app = StripApiPrefix(app.wsgi_app)
-    """
-
-    def __init__(self, wsgi_app):
-        self.wsgi_app = wsgi_app
-
-    def __call__(self, environ, start_response):
-        path = environ.get("PATH_INFO", "")
-        if path.startswith("/api"):
-            stripped = path[len("/api"):]
-            environ["PATH_INFO"] = stripped if stripped.startswith("/") else "/" + stripped
-        return self.wsgi_app(environ, start_response)
-
-app.wsgi_app = StripApiPrefix(app.wsgi_app)
+    try:
+        cur.execute("""
+            INSERT INTO scans (id, name, upload_date, upload_timestamp, zip_file, glb_file)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (new_id, name, upload_date, upload_timestamp, file_content, None))
+        db.commit()
+        return jsonify({"id": new_id, "message": "Upload successful"}), 201
+    except Exception as e:
+        db.rollback()
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/")
 def hello_world():

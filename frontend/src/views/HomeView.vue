@@ -1,5 +1,45 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import { RouterLink } from 'vue-router'
+import { uploadScan } from '@/api/threeApi'
+
+const fileInput = ref<HTMLInputElement | null>(null)
+const isUploading = ref(false)
+
+const triggerUpload = () => {
+  fileInput.value?.click()
+}
+
+const handleFileChange = async (event: Event) => {
+  const target = event.target as HTMLInputElement
+  if (!target.files || target.files.length === 0) return
+
+  const file = target.files[0]
+  
+  // Validation: Only ZIP
+  if (!file.name.endsWith('.zip')) {
+    alert('Please upload only .zip files.')
+    return
+  }
+
+  // Requirement: Name is mandatory
+  const name = prompt("Please enter a name for this scan:")
+  if (!name) {
+    alert("Name is mandatory for upload.")
+    return
+  }
+
+  try {
+    isUploading.value = true
+    await uploadScan(name, file)
+    alert("Upload successful!")
+  } catch (err: any) {
+    alert("Error: " + err.message)
+  } finally {
+    isUploading.value = false
+    if (fileInput.value) fileInput.value.value = '' // Reset input
+  }
+}
 </script>
 
 <template>
@@ -16,9 +56,22 @@ import { RouterLink } from 'vue-router'
           <RouterLink to="/fps" class="btn btn-primary btn-lg px-5 gap-3">
             Start Viewing
           </RouterLink>
-          <a href="https://github.com" target="_blank" class="btn btn-outline-secondary btn-lg px-4">
-            Documentation
-          </a>
+          <button 
+            @click="triggerUpload" 
+            class="btn btn-outline-secondary btn-lg px-4"
+            :disabled="isUploading"
+          >
+            {{ isUploading ? 'Uploading...' : 'Upload Scan (.zip)' }}
+          </button>
+
+          <!-- HIDDEN FILE INPUT -->
+          <input 
+            type="file" 
+            ref="fileInput" 
+            style="display: none" 
+            accept=".zip" 
+            @change="handleFileChange"
+          />
         </div>
       </div>
     </div>
