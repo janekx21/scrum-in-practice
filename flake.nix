@@ -27,6 +27,9 @@
             # Python with libs
             python3
             python3Packages.flask
+            python3Packages.numpy
+            python3Packages.trimesh
+            python3Packages.scipy
 
             # Python dev
             ty
