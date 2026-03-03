@@ -1,17 +1,19 @@
 <script setup lang="ts">
-import { useGraph, useLoader } from '@tresjs/core'
+import { useLoader } from '@tresjs/core'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
-import { computed } from 'vue'
+import { watch } from 'vue'
 
-// Setup DRACO loader for compressed GLTFs
+const props = defineProps<{
+  path: string
+}>()
+
 const dracoLoader = new DRACOLoader()
 dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/')
 
-// Load a GLTF model
-const { state: model, isLoading, error } = useLoader(
+const { state: model, error } = useLoader(
   GLTFLoader,
-  '/blender-cube.glb',
+  props.path, // Use the prop passed from the view
   {
     extensions: (loader) => {
       if (loader instanceof GLTFLoader) {
@@ -21,17 +23,15 @@ const { state: model, isLoading, error } = useLoader(
   },
 )
 
-// Extract the scene and graph
-const scene = computed(() => model.value?.scene)
-const graph = useGraph(scene)
-
-const nodes = computed(() => graph.value?.nodes)
+watch(error, (e) => {
+  if (e) console.error("3D Model Loading Error:", e)
+})
 </script>
 
 <template>
-  <!-- Render the Cube node if it exists -->
-  <primitive
-    v-if="nodes?.BlenderCube"
-    :object="nodes?.BlenderCube"
+  <!-- Render the entire scene from the file, not just one node -->
+  <primitive 
+    v-if="model" 
+    :object="model.scene" 
   />
 </template>
