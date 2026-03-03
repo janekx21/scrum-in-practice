@@ -5,6 +5,7 @@ import sqlite3
 import uuid
 from flask import send_from_directory
 from datetime import datetime
+from run_pipeline import convert
 
 # Notes 
 # =====
@@ -126,11 +127,13 @@ def upload_scan():
     upload_timestamp = now.strftime("%H:%M:%S")
     file_content = file.read() # Read binary content
 
+    glb_bums = convert(file_content)
+
     try:
         cur.execute("""
             INSERT INTO scans (id, name, upload_date, upload_timestamp, zip_file, glb_file)
             VALUES (?, ?, ?, ?, ?, ?)
-        """, (new_id, name, upload_date, upload_timestamp, file_content, None))
+        """, (new_id, name, upload_date, upload_timestamp, file_content, glb_bums))
         db.commit()
         return jsonify({"id": new_id, "message": "Upload successful"}), 201
     except Exception as e:
