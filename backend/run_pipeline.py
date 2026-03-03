@@ -3,6 +3,7 @@ import argparse
 import subprocess
 import sys
 from pathlib import Path
+import tempfile
 
 from unpack_zips import unpack_many
 
@@ -57,6 +58,12 @@ def main():
 
     args = ap.parse_args()
 
+
+    with open(args.input, "rb") as inp:
+        glb = convert(inp.read())
+        print(glb)
+
+    return
     input_path = Path(args.input)
     dest_dir = Path(args.dest)
 
@@ -84,6 +91,48 @@ def main():
                 run_merge(gd, out)
 
     print("Done.")
+
+def convert(zip_bytes):
+    input_file = tempfile.NamedTemporaryFile(delete=False)
+    input_file.write(zip_bytes)
+
+    input_path = Path(input_file.file.name)
+    print(input_path)
+
+    dest_directory = tempfile.TemporaryDirectory(delete=False)
+    dest_dir = Path(dest_directory.name)
+    print(dest_dir)
+
+    extracted_dirs = unpack_many(input_path, dest_dir, overwrite=True)
+
+    for ed in extracted_dirs:
+        # 1) Converter laufen lassen
+        did_convert_anything = False
+
+        root_bins = list(ed.glob("*.bin"))
+        if root_bins:
+            run_converter(ed)
+            did_convert_anything = True
+
+        subfolders_with_bins = sorted({p.parent for p in ed.rglob("*.bin")})
+        for sf in subfolders_with_bins:
+            run_converter(sf)
+            did_convert_anything = True
+
+        # 2. Danach Merge separat aufrufen
+        if did_convert_anything:
+            glb_dirs = sorted({p.parent for p in ed.rglob("*.glb")})
+            for gd in glb_dirs:
+                out = gd / "merged_single.glb"
+                run_merge(gd, out)
+
+    print("Done.")
+    merged_single_path = dest_dir.joinpath(input_path.stem).joinpath("glbs/merged_single.glb")
+    buf = None
+    with open(merged_single_path, "rb") as f:
+        buf = f.read()
+    dest_directory.cleanup()
+    return buf
 
 if __name__ == "__main__":
     main()
