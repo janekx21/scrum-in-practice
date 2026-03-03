@@ -43,6 +43,12 @@ def merge_folder_to_one_mesh(input_dir: Path, output_file: Path) -> None:
 
     # Das ist der entscheidende Schritt: EIN Mesh erzeugen
     merged = trimesh.util.concatenate(meshes)
+    # doppelte Vertices entfernen
+    merged.merge_vertices()
+    # Normals neu berechnen (smooth shading Effekt)
+    merged.rezero()
+    # Normals sauber berechnen
+    merged.vertex_normals
 
     output_file.parent.mkdir(parents=True, exist_ok=True)
     merged.export(output_file)
