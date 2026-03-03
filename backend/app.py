@@ -164,7 +164,7 @@ def get_all_scans():
     try:
         db = get_db()
         # Fetching all scans, ordered by newest first
-        cur = db.execute("SELECT id, name, upload_date, upload_timestamp, zip_file FROM scans ORDER BY upload_date DESC, upload_timestamp DESC")
+        cur = db.execute("SELECT id, name, upload_date, upload_timestamp  FROM scans ORDER BY upload_date DESC, upload_timestamp DESC")
         rows = cur.fetchall()
         
         # Convert sqlite3.Row objects to a list of dictionaries
