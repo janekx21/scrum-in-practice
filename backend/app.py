@@ -5,6 +5,8 @@ import sqlite3
 import uuid
 from flask import send_from_directory
 from datetime import datetime
+import os
+from werkzeug.utils import secure_filename
 
 # Notes 
 # =====
@@ -39,6 +41,10 @@ from datetime import datetime
 DATABASE = "main.db"
 
 app = Flask(__name__)
+
+UPLOAD_FOLDER = 'uploads'
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 def get_db() -> sqlite3.Connection:
     """Get database connection, creating if needed"""
@@ -106,35 +112,60 @@ def add_headers(response):
     response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
     return response    
 
-@app.post("/upload")
+@app.route("/upload", methods=["POST"])
 def upload_scan():
-    if 'file' not in request.files or 'name' not in request.form:
-        return jsonify({"error": "Missing file or name"}), 400
-    
-    file = request.files['file']
-    name = request.form['name']
-    
-    if file.filename == '' or not file.filename.endswith('.zip'):
-        return jsonify({"error": "Only .zip files are allowed"}), 400
-
     db = get_db()
-    cur = db.cursor()
-    
-    new_id = str(uuid.uuid4())
-    now = datetime.now()
-    upload_date = now.strftime("%Y-%m-%d")
-    upload_timestamp = now.strftime("%H:%M:%S")
-    file_content = file.read() # Read binary content
-
     try:
+        if 'file' not in request.files:
+            return jsonify({"error": "No file part"}), 400
+        
+        file = request.files['file']
+        name = request.form.get('name')
+
+        if not name or file.filename == '':
+            return jsonify({"error": "Name and File are mandatory"}), 400
+
+        # 1. Create a unique ID and filename
+        new_id = str(uuid.uuid4())
+        # secure_filename prevents directory traversal attacks
+        filename = secure_filename(f"{new_id}_{file.filename}")
+        
+        # 2. Save the ACTUAL file to the 'uploads' folder
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(file_path)
+
+        # 3. Get current time
+        now = datetime.now()
+        upload_date = now.strftime("%Y-%m-%d")
+        upload_timestamp = now.strftime("%H:%M:%S")
+
+        # 4. Store ONLY the filename (the string) in the DB
+        cur = db.cursor()
         cur.execute("""
             INSERT INTO scans (id, name, upload_date, upload_timestamp, zip_file, glb_file)
             VALUES (?, ?, ?, ?, ?, ?)
-        """, (new_id, name, upload_date, upload_timestamp, file_content, None))
+        """, (new_id, name, upload_date, upload_timestamp, filename, None))
         db.commit()
+
         return jsonify({"id": new_id, "message": "Upload successful"}), 201
+
     except Exception as e:
-        db.rollback()
+        if 'db' in locals():
+            db.rollback()
+        return jsonify({"error": str(e)}), 500
+
+@app.get("/scans")
+def get_all_scans():
+    try:
+        db = get_db()
+        # Fetching all scans, ordered by newest first
+        cur = db.execute("SELECT id, name, upload_date, upload_timestamp, zip_file FROM scans ORDER BY upload_date DESC, upload_timestamp DESC")
+        rows = cur.fetchall()
+        
+        # Convert sqlite3.Row objects to a list of dictionaries
+        scans = [dict(row) for row in rows]
+        return jsonify(scans), 200
+    except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 @app.route("/")
