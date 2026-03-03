@@ -93,6 +93,29 @@ def add_headers(response):
     response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
     return response    
 
+
+class StripApiPrefix:
+    """
+    WSGI middleware that removes the /api prefix from PATH_INFO before
+    the request reaches Flask. This runs before any routing occurs.
+
+    Usage:
+        app = Flask(__name__)
+        app.wsgi_app = StripApiPrefix(app.wsgi_app)
+    """
+
+    def __init__(self, wsgi_app):
+        self.wsgi_app = wsgi_app
+
+    def __call__(self, environ, start_response):
+        path = environ.get("PATH_INFO", "")
+        if path.startswith("/api"):
+            stripped = path[len("/api"):]
+            environ["PATH_INFO"] = stripped if stripped.startswith("/") else "/" + stripped
+        return self.wsgi_app(environ, start_response)
+
+app.wsgi_app = StripApiPrefix(app.wsgi_app)
+
 @app.route("/")
 def hello_world():
     return "<p>Hello, World 2!</p>"

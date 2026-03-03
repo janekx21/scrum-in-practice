@@ -1,0 +1,98 @@
+services:
+
+  traefik:
+    image: traefik:v3.2
+    container_name: traefik
+    command:
+      - "--api.dashboard=true"
+      - "--api.insecure=true"
+      - "--api=true"
+      - "--log.level=DEBUG"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      # Let's Encrypt (comment out if you don't want auto TLS)
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
+      - "--certificatesresolvers.letsencrypt.acme.email=admin@carperfume.net"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "letsencrypt:/letsencrypt"
+    labels:
+      - "traefik.enable=true"
+      # Dashboard — on traefik.localhost to avoid conflict with frontend-local
+      - "traefik.http.routers.dashboard.rule=Host(`traefik.localhost`)"
+      - "traefik.http.routers.dashboard.service=api@internal"
+      - "traefik.http.routers.dashboard.entrypoints=web"
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    expose:
+      - "80"
+    labels:
+      - "traefik.enable=true"
+      # Production HTTPS
+      - "traefik.http.routers.frontend.rule=Host(`scrum.carperfume.net`)"
+      - "traefik.http.routers.frontend.entrypoints=websecure"
+      - "traefik.http.routers.frontend.tls=true"
+      - "traefik.http.routers.frontend.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.frontend.priority=1"
+      # Production HTTP (no TLS)
+      - "traefik.http.routers.frontend-http.rule=Host(`scrum.carperfume.net`)"
+      - "traefik.http.routers.frontend-http.entrypoints=web"
+      - "traefik.http.routers.frontend-http.priority=1"
+      # Local development
+      - "traefik.http.routers.frontend-local.rule=Host(`localhost`)"
+      - "traefik.http.routers.frontend-local.entrypoints=web"
+      - "traefik.http.routers.frontend-local.priority=1"
+      - "traefik.http.services.frontend.loadbalancer.server.port=80"
+    restart: unless-stopped
+    depends_on:
+      - backend
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: backend
+    expose:
+      - "5001"
+    environment:
+      - FLASK_ENV=production
+      - DATABASE_PATH=/data/db.sqlite3
+    volumes:
+      - backend-data:/data
+    labels:
+      - "traefik.enable=true"
+      # Production HTTPS
+      - "traefik.http.routers.backend.rule=Host(`scrum.carperfume.net`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.backend.entrypoints=websecure"
+      - "traefik.http.routers.backend.tls=true"
+      - "traefik.http.routers.backend.tls.certresolver=letsencrypt"
+      # Production HTTP (no TLS)
+      - "traefik.http.routers.backend-http.rule=Host(`scrum.carperfume.net`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.backend-http.entrypoints=web"
+      # Strip /api prefix for local dev
+      - "traefik.http.middlewares.strip-api.stripprefix.prefixes=/api"
+      # Local development
+      - "traefik.http.routers.backend-local.rule=Host(`localhost`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.backend-local.entrypoints=web"
+      - "traefik.http.routers.backend-local.priority=2"
+      - "traefik.http.routers.backend-local.middlewares=strip-api"
+      - "traefik.http.services.backend.loadbalancer.server.port=5001"
+    restart: unless-stopped
+
+volumes:
+  letsencrypt:
+  backend-data:
