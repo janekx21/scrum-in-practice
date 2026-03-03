@@ -7,6 +7,7 @@ from flask import send_from_directory
 from datetime import datetime
 import os
 from werkzeug.utils import secure_filename
+from run_pipeline import convert
 
 # Notes 
 # =====
@@ -115,11 +116,14 @@ def add_headers(response):
 @app.route("/upload", methods=["POST"])
 def upload_scan():
     db = get_db()
+
     try:
         if 'file' not in request.files:
             return jsonify({"error": "No file part"}), 400
         
         file = request.files['file']
+        file_content = file.read() # Read binary content
+
         name = request.form.get('name')
 
         if not name or file.filename == '':
@@ -138,13 +142,14 @@ def upload_scan():
         now = datetime.now()
         upload_date = now.strftime("%Y-%m-%d")
         upload_timestamp = now.strftime("%H:%M:%S")
+        glb_bums = convert(file_content)
 
         # 4. Store ONLY the filename (the string) in the DB
         cur = db.cursor()
         cur.execute("""
             INSERT INTO scans (id, name, upload_date, upload_timestamp, zip_file, glb_file)
             VALUES (?, ?, ?, ?, ?, ?)
-        """, (new_id, name, upload_date, upload_timestamp, filename, None))
+        """, (new_id, name, upload_date, upload_timestamp, filename, glb_bums))
         db.commit()
 
         return jsonify({"id": new_id, "message": "Upload successful"}), 201
