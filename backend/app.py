@@ -1,5 +1,5 @@
 from flask.helpers import make_response
-from flask import Flask, request, abort, g
+from flask import Flask, request, abort, g, jsonify
 from typing import TypedDict
 import sqlite3
 import uuid
