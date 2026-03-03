@@ -5,19 +5,17 @@ import sys
 
 import trimesh
 
-
+"""
+    Lädt eine GLB und gibt ein einzelnes trimesh zurück (alle zusammengeführt)
+    Berücksichtigt Scene-Transforms über scene.dump(concatenate=True)
+"""
 def glb_to_single_mesh(glb_path: Path) -> trimesh.Trimesh | None:
-    """
-    Lädt eine GLB und gibt ein einzelnes Trimesh zurück (alles zusammengeführt).
-    Berücksichtigt Scene-Transforms über scene.dump(concatenate=True).
-    """
     loaded = trimesh.load(glb_path, force="scene")
 
     if isinstance(loaded, trimesh.Trimesh):
         return loaded
 
     if isinstance(loaded, trimesh.Scene):
-        # dump(concatenate=True) -> ein einzelnes Trimesh mit angewendeten Transforms
         mesh = loaded.dump(concatenate=True)
         if isinstance(mesh, trimesh.Trimesh) and mesh.vertices.size > 0:
             return mesh

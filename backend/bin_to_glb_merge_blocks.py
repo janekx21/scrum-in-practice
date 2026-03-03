@@ -23,15 +23,14 @@ DTYPE_MAP = {
 def read_u32_le(b: bytes, off: int) -> Tuple[int, int]:
     return struct.unpack_from("<I", b, off)[0], off + 4
 
-
-def decompress_chunked_payload(file_bytes: bytes) -> Tuple[dict, bytes, int]:
-    """
+"""
     Layout:
       [u32 outer_json_len][outer_json_bytes]
       then repeated until EOF:
         [u32 chunk_len][zlib-compressed bytes]
     Returns: (outer_header_json, decompressed_payload_bytes, chunk_count)
-    """
+"""
+def decompress_chunked_payload(file_bytes: bytes) -> Tuple[dict, bytes, int]:
     off = 0
     if len(file_bytes) < 4:
         raise ValueError("File too small")
@@ -62,12 +61,11 @@ def decompress_chunked_payload(file_bytes: bytes) -> Tuple[dict, bytes, int]:
 
     return outer, bytes(out), chunks
 
-
-def extract_first_json_object(payload: bytes) -> Tuple[dict, int]:
-    """
+"""
     Extract the first complete JSON object {...} from payload.
     Returns (obj, end_offset).
-    """
+"""
+def extract_first_json_object(payload: bytes) -> Tuple[dict, int]:
     start = payload.find(b"{")
     if start == -1:
         raise ValueError("No JSON object start found in payload")
@@ -111,12 +109,11 @@ def consume_array(payload: bytes, off: int, dtype: str, count: int, stride: int)
     arr = arr.reshape((count, stride))
     return arr, off
 
-
-def decode_global_arrays(payload: bytes, meshheader: dict, off_after_json: int):
-    """
+"""
     Reads the global buffers as described by meshheader counts.
     We will then rebuild a correct merged mesh from blocks.
-    """
+"""
+def decode_global_arrays(payload: bytes, meshheader: dict, off_after_json: int):
     off = off_after_json
 
     v_dtype = meshheader["vertex_dtype"]
@@ -171,14 +168,13 @@ def compute_vertex_normals_numpy(vertices: np.ndarray, faces: np.ndarray) -> np.
     vn /= n
     return vn
 
-
-def rebase_triangles_for_block(T: np.ndarray, v_off: int, v_cnt: int, global_v_cnt: int) -> np.ndarray:
-    """
+"""
     We try to detect whether triangles are:
       - global indices into the full vertex buffer, or
       - local indices into the block vertex slice.
     Then we return local indices 0..v_cnt-1.
-    """
+"""
+def rebase_triangles_for_block(T: np.ndarray, v_off: int, v_cnt: int, global_v_cnt: int) -> np.ndarray:
     if T.size == 0:
         return T.astype(np.int64, copy=False)
 

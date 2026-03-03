@@ -6,11 +6,10 @@ from pathlib import Path
 
 from unpack_zips import unpack_many
 
-
-def run_converter(extracted_dir: Path) -> None:
-    """
+"""
     Ruft automatisch bin_to_glb_merge_blocks.py im selben Ordner auf.
-    """
+"""
+def run_converter(extracted_dir: Path) -> None:
     script_dir = Path(__file__).parent
     converter_script = script_dir / "bin_to_glb_merge_blocks.py"
 
@@ -25,11 +24,10 @@ def run_converter(extracted_dir: Path) -> None:
     print("Running:", " ".join(cmd))
     subprocess.run(cmd, check=True)
 
-
+"""
+    Ruft merge_glbs.py 
+"""
 def run_merge(glb_dir: Path, output_file: Path) -> None:
-    """
-    Ruft merge_glbs.py separat auf (liegt im selben Ordner wie dieses Script).
-    """
     script_dir = Path(__file__).parent
     merge_script = script_dir / "merge_glbs.py"
 
@@ -40,10 +38,12 @@ def run_merge(glb_dir: Path, output_file: Path) -> None:
     print("Running:", " ".join(cmd))
     subprocess.run(cmd, check=True)
 
-
+"""
+    Pipeline for running the whole converting script from ZIP into GLB to use in the Webfrontend
+"""
 def main():
     ap = argparse.ArgumentParser(
-        description="Pipeline: unzip *.zip -> run bin_to_glb_merge_blocks.py -> run merge_glbs.py"
+        description="Pipeline: unzip *.zip in unpack_zips -> run bin_to_glb_merge_blocks.py -> run merge_glbs.py"
     )
     ap.add_argument("input", help="Path to a .zip file OR folder containing .zip files")
     ap.add_argument(
@@ -52,8 +52,7 @@ def main():
         help="Where to unpack zips (default: _work_unzipped)"
     )
     ap.add_argument("--overwrite", action="store_true")
-
-    # optional: merge an/aus (standard: an)
+    # optional: merge an/aus default an
     ap.add_argument("--no-merge", action="store_true", help="Do not run merge_glbs.py")
 
     args = ap.parse_args()
@@ -64,7 +63,7 @@ def main():
     extracted_dirs = unpack_many(input_path, dest_dir, overwrite=args.overwrite)
 
     for ed in extracted_dirs:
-        # 1) Converter laufen lassen (wie bisher)
+        # 1) Converter laufen lassen
         did_convert_anything = False
 
         root_bins = list(ed.glob("*.bin"))
@@ -77,7 +76,7 @@ def main():
             run_converter(sf)
             did_convert_anything = True
 
-        # 2) Danach Merge separat aufrufen (pro glb-Ordner)
+        # 2. Danach Merge separat aufrufen
         if not args.no_merge and did_convert_anything:
             glb_dirs = sorted({p.parent for p in ed.rglob("*.glb")})
             for gd in glb_dirs:
@@ -85,7 +84,6 @@ def main():
                 run_merge(gd, out)
 
     print("Done.")
-
 
 if __name__ == "__main__":
     main()

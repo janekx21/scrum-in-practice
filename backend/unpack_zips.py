@@ -4,12 +4,11 @@ import zipfile
 from pathlib import Path
 from typing import List
 
-
-def unpack_zip(zip_path: Path, dest_dir: Path, *, overwrite: bool = False) -> Path:
-    """
+"""
     Entpackt eine einzelne ZIP in dest_dir/<zip_stem>/...
     Gibt den Zielordner zurück.
-    """
+"""
+def unpack_zip(zip_path: Path, dest_dir: Path, *, overwrite: bool = False) -> Path:
     if not zip_path.is_file():
         raise FileNotFoundError(zip_path)
 
@@ -19,24 +18,23 @@ def unpack_zip(zip_path: Path, dest_dir: Path, *, overwrite: bool = False) -> Pa
     with zipfile.ZipFile(zip_path, "r") as zf:
         members = zf.infolist()
 
-        # Wenn nicht overwrite: überspringen, falls bereits Inhalte existieren
+        # Wenn nicht overwrite: überspringen
         if not overwrite:
-            # Heuristik: wenn bereits mind. 1 Datei existiert, nicht nochmal entpacken
+            # enn bereits mind. 1 Datei existiert, nicht nochmal entpacken
             if any(out_dir.rglob("*")):
                 return out_dir
 
-        # Entpacken (overwrite heißt: wir entpacken einfach drüber; ZipFile überschreibt Dateien)
+        # Entpacken
         zf.extractall(out_dir)
 
     return out_dir
 
-
-def unpack_many(input_path: Path, dest_dir: Path, *, overwrite: bool = False) -> List[Path]:
-    """
+"""
     Nimmt eine ZIP-Datei oder einen Ordner mit ZIPs.
     Entpackt alles nach dest_dir/<zip_stem>/...
     Gibt Liste der entpackten Ordner zurück.
-    """
+"""
+def unpack_many(input_path: Path, dest_dir: Path, *, overwrite: bool = False) -> List[Path]:
     dest_dir.mkdir(parents=True, exist_ok=True)
 
     zips: List[Path]
