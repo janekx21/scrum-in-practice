@@ -104,7 +104,7 @@ def handle_mesh(frame_bytes: bytes, outer: dict):
         glb, outer_hdr, meshheader = mesh_frame_bytes_to_glb(frame_bytes)
 
         out = Path("glbs") / f"frame_{FRAME_COUNTER:06d}.glb"
-        # save_glb(glb, out)
+        save_glb(glb, out)
 
         # TODO here is the GLB as the "glb" thing
 
