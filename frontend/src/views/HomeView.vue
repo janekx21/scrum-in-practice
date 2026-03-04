@@ -64,14 +64,14 @@ const handleFileChange = async (event: Event) => {
     <!-- Hero Section -->
     <div class="row align-items-center justify-content-center mb-5">
       <div class="col-md-8 text-center">
-        <h1 class="display-4 fw-bold mb-3">3D Building Scanner</h1>
+        <h1 class="display-3 fw-bold mb-3">EVOK</h1>
         <p class="lead mb-4 text-muted">
-          Manage and view your architectural 3D scans.
+          High-precision 3D Building Scanner & Real-time Visualization.
         </p>
         
         <div class="d-grid gap-3 d-sm-flex justify-content-sm-center">
-          <RouterLink to="/fps" class="btn btn-primary btn-lg px-5">
-            Open Viewer
+          <RouterLink to="/livestreaming" class="btn btn-warning btn-lg px-4 fw-bold">
+            Connect to Live Stream
           </RouterLink>
           
           <button @click="triggerUpload" class="btn btn-outline-success btn-lg px-4" :disabled="isUploading">
@@ -88,7 +88,7 @@ const handleFileChange = async (event: Event) => {
       <div class="col-md-10">
         <div class="card shadow-sm">
           <div class="card-header bg-white">
-            <h5 class="mb-0">Recent Uploads</h5>
+            <h5 class="mb-0">EVOK Scan History</h5>
           </div>
           <div class="card-body p-0">
             <div class="table-responsive">

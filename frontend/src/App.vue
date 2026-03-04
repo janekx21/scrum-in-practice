@@ -6,7 +6,7 @@ import { RouterLink, RouterView } from 'vue-router'
   <header>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
       <div class="container">
-        <RouterLink class="navbar-brand" to="/">3D BuildScan</RouterLink>
+        <RouterLink class="navbar-brand" to="/">EVOK</RouterLink>
         <button
           class="navbar-toggler"
           type="button"
