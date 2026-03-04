@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-import argparse
 import json
 import struct
 import zlib
 from pathlib import Path
-from typing import Tuple, Optional, List
+from typing import Optional, Tuple, List
 
 import numpy as np
 import trimesh
@@ -21,50 +20,11 @@ DTYPE_MAP = {
 
 
 def read_u32_le(b: bytes, off: int) -> Tuple[int, int]:
+    if off + 4 > len(b):
+        raise ValueError("Truncated while reading u32")
     return struct.unpack_from("<I", b, off)[0], off + 4
 
-"""
-    Layout:
-      [u32 outer_json_len][outer_json_bytes]
-      then repeated until EOF:
-        [u32 chunk_len][zlib-compressed bytes]
-    Returns: (outer_header_json, decompressed_payload_bytes, chunk_count)
-"""
-def decompress_chunked_payload(file_bytes: bytes) -> Tuple[dict, bytes, int]:
-    off = 0
-    if len(file_bytes) < 4:
-        raise ValueError("File too small")
 
-    hdr_len, off = read_u32_le(file_bytes, off)
-    if off + hdr_len > len(file_bytes):
-        raise ValueError("Outer JSON header exceeds file size")
-
-    outer = json.loads(file_bytes[off:off + hdr_len].decode("utf-8"))
-    off += hdr_len
-
-    out = bytearray()
-    chunks = 0
-    while off < len(file_bytes):
-        if off + 4 > len(file_bytes):
-            raise ValueError("Truncated: missing chunk length at end")
-        clen, off = read_u32_le(file_bytes, off)
-        if clen <= 0:
-            raise ValueError("Invalid chunk length")
-        if off + clen > len(file_bytes):
-            raise ValueError("Truncated: chunk exceeds file size")
-
-        comp = file_bytes[off:off + clen]
-        off += clen
-
-        out += zlib.decompress(comp)
-        chunks += 1
-
-    return outer, bytes(out), chunks
-
-"""
-    Extract the first complete JSON object {...} from payload.
-    Returns (obj, end_offset).
-"""
 def extract_first_json_object(payload: bytes) -> Tuple[dict, int]:
     start = payload.find(b"{")
     if start == -1:
@@ -98,21 +58,37 @@ def extract_first_json_object(payload: bytes) -> Tuple[dict, int]:
     raise ValueError("JSON object not closed (unbalanced braces)")
 
 
+def decompress_zlib_chunks(buf: bytes, off: int) -> Tuple[bytes, int]:
+    """
+    Reads repeated [u32 chunk_len][zlib bytes] until EOF.
+    Returns (decompressed_payload, chunk_count).
+    """
+    out = bytearray()
+    chunks = 0
+    while off < len(buf):
+        clen, off = read_u32_le(buf, off)
+        if clen <= 0:
+            raise ValueError(f"Invalid chunk length: {clen}")
+        if off + clen > len(buf):
+            raise ValueError("Truncated: chunk exceeds message size")
+        out += zlib.decompress(buf[off:off + clen])
+        off += clen
+        chunks += 1
+    return bytes(out), chunks
+
+
 def consume_array(payload: bytes, off: int, dtype: str, count: int, stride: int) -> Tuple[np.ndarray, int]:
     np_dtype = DTYPE_MAP[dtype]
-    n = count * stride
+    n = int(count) * int(stride)
     nbytes = np.dtype(np_dtype).itemsize * n
     if off + nbytes > len(payload):
         raise ValueError(f"Array exceeds payload: need {nbytes} bytes at offset {off}, payload={len(payload)}")
     arr = np.frombuffer(payload, dtype=np_dtype, count=n, offset=off).copy()
     off += nbytes
-    arr = arr.reshape((count, stride))
+    arr = arr.reshape((int(count), int(stride)))
     return arr, off
 
-"""
-    Reads the global buffers as described by meshheader counts.
-    then rebuild a correct merged mesh from blocks.
-"""
+
 def decode_global_arrays(payload: bytes, meshheader: dict, off_after_json: int):
     off = off_after_json
 
@@ -146,34 +122,26 @@ def decode_global_arrays(payload: bytes, meshheader: dict, off_after_json: int):
 
 
 def compute_vertex_normals_numpy(vertices: np.ndarray, faces: np.ndarray) -> np.ndarray:
-    v = vertices
-    f = faces
+    if len(faces) == 0 or len(vertices) == 0:
+        return np.zeros((len(vertices), 3), dtype=np.float32)
 
-    if len(f) == 0 or len(v) == 0:
-        return np.zeros((len(v), 3), dtype=np.float32)
-
-    v0 = v[f[:, 0]]
-    v1 = v[f[:, 1]]
-    v2 = v[f[:, 2]]
+    v0 = vertices[faces[:, 0]]
+    v1 = vertices[faces[:, 1]]
+    v2 = vertices[faces[:, 2]]
 
     fn = np.cross(v1 - v0, v2 - v0)  # area-weighted face normals
 
-    vn = np.zeros_like(v, dtype=np.float32)
-    np.add.at(vn, f[:, 0], fn)
-    np.add.at(vn, f[:, 1], fn)
-    np.add.at(vn, f[:, 2], fn)
+    vn = np.zeros_like(vertices, dtype=np.float32)
+    np.add.at(vn, faces[:, 0], fn)
+    np.add.at(vn, faces[:, 1], fn)
+    np.add.at(vn, faces[:, 2], fn)
 
     n = np.linalg.norm(vn, axis=1, keepdims=True)
     n[n == 0] = 1.0
     vn /= n
     return vn
 
-"""
-    We try to detect whether triangles are:
-      - global indices into the full vertex buffer, or
-      - local indices into the block vertex slice.
-    Then we return local indices 0..v_cnt-1.
-"""
+
 def rebase_triangles_for_block(T: np.ndarray, v_off: int, v_cnt: int, global_v_cnt: int) -> np.ndarray:
     if T.size == 0:
         return T.astype(np.int64, copy=False)
@@ -182,21 +150,16 @@ def rebase_triangles_for_block(T: np.ndarray, v_off: int, v_cnt: int, global_v_c
     tmin = int(Ti.min())
     tmax = int(Ti.max())
 
-    # Case 1: already local (0..v_cnt-1)
     if 0 <= tmin and tmax < v_cnt:
         return Ti
 
-    # Case 2: global and within this block slice (v_off..v_off+v_cnt-1)
     if v_off <= tmin and tmax < (v_off + v_cnt):
         return Ti - v_off
 
-    # Case 3: global overall, but triangles may still mostly target the block slice.
-    # Try subtracting v_off and validate.
     cand = Ti - v_off
     if cand.min() >= 0 and cand.max() < v_cnt:
         return cand
 
-    # If we land here, something doesn't match; fail loudly with diagnostics.
     raise ValueError(
         f"Cannot rebase triangles for block: v_off={v_off} v_cnt={v_cnt} "
         f"triangle_min={tmin} triangle_max={tmax} global_vertex_count={global_v_cnt}"
@@ -231,20 +194,17 @@ def merge_blocks_to_single_mesh(vertices: np.ndarray,
         Tb = triangles[t_off:t_off + t_cnt]
 
         Tb_local = rebase_triangles_for_block(Tb, v_off, v_cnt, global_v_cnt=len(vertices))
-        Tb_local = Tb_local + vertex_base  # shift into merged vertex array
+        Tb_local = Tb_local + vertex_base
 
         v_merged.append(Vb)
         f_merged.append(Tb_local.astype(np.int64, copy=False))
 
         if colors is not None:
-            # colors are stored as bytes; meshheader blocks often include c_off/c_len
             c_off = int(b.get("c_off", -1))
             c_len = int(b.get("c_len", 0))
             if c_off >= 0 and c_len > 0:
-                # c_len is bytes; with stride=3 uint8 => count = c_len/3
                 cb = colors.reshape(-1, colors.shape[1])
                 Cb = cb[c_off // colors.shape[1] : (c_off + c_len) // colors.shape[1]]
-                # If sizes mismatch, fall back to vertex slice alignment
                 if len(Cb) != v_cnt:
                     Cb = colors[v_off:v_off + v_cnt]
             else:
@@ -263,7 +223,6 @@ def merge_blocks_to_single_mesh(vertices: np.ndarray,
     C = None
     if colors is not None and len(c_merged) == used_blocks:
         C = np.vstack(c_merged)
-        # ensure uint8 RGB
         if C.dtype != np.uint8:
             C = C.astype(np.uint8)
 
@@ -273,7 +232,6 @@ def merge_blocks_to_single_mesh(vertices: np.ndarray,
 def export_glb(vertices_f32: np.ndarray, faces_i64: np.ndarray, colors_rgb_u8: Optional[np.ndarray]) -> bytes:
     mesh = trimesh.Trimesh(vertices=vertices_f32, faces=faces_i64, process=False)
 
-    # normals without scipy
     vn = compute_vertex_normals_numpy(vertices_f32, faces_i64)
     mesh._cache["vertex_normals"] = vn
 
@@ -284,8 +242,6 @@ def export_glb(vertices_f32: np.ndarray, faces_i64: np.ndarray, colors_rgb_u8: O
             c = np.concatenate([c, alpha], axis=1)
         if c.shape[0] == vertices_f32.shape[0] and c.shape[1] == 4:
             mesh.visual.vertex_colors = c
-        else:
-            print("Warning: colors not applied (shape mismatch after merge).")
 
     glb = mesh.export(file_type="glb")
     if isinstance(glb, str):
@@ -293,64 +249,45 @@ def export_glb(vertices_f32: np.ndarray, faces_i64: np.ndarray, colors_rgb_u8: O
     return glb
 
 
-def pick_first_bin(path: Path) -> Path:
-    if path.is_file():
-        return path
-    bins = sorted(path.glob("*.bin"))
-    if not bins:
-        raise FileNotFoundError(f"No .bin files found in {path}")
-    return bins[0]
+def mesh_frame_bytes_to_glb(frame_bytes: bytes) -> Tuple[bytes, dict, dict]:
+    """
+    Input: WebSocket binary message for a mesh frame:
+      [u32 outer_json_len][outer_json][u32 chunk_len][zlib]...
 
+    Returns:
+      (glb_bytes, outer_header, meshheader)
+    """
+    off = 0
+    outer_len, off = read_u32_le(frame_bytes, off)
+    if off + outer_len > len(frame_bytes):
+        raise ValueError("Outer header truncated")
 
-def main():
-    ap = argparse.ArgumentParser(description="Convert chunked-zlib mesh .bin to a single merged GLB (blockwise merge)")
-    ap.add_argument("input", help="Path to a .bin file or a directory containing .bin files")
-    ap.add_argument("-o", "--out", default="out.glb", help="Output .glb path (default: out.glb)")
-    args = ap.parse_args()
+    outer = json.loads(frame_bytes[off:off + outer_len].decode("utf-8"))
+    off += outer_len
 
+    ftype = (outer.get("type") or "").lower()
+    if ftype != "mesh":
+        raise ValueError(f"Not a mesh frame (type={outer.get('type')!r})")
 
-    folder = Path(args.input)
-    files = sorted(folder.glob("*.bin"))
-    print("Found", len(files), "bin files")
+    compression = (outer.get("compression") or "").lower()
+    if compression != "zlib":
+        raise ValueError(f"Unsupported compression: {compression!r}")
 
-    for file in files:
-        print("Processing:", file.name)
-        convert(file, file.parent.joinpath("glbs").joinpath(file.name + ".glb"))
-    print("Done")
+    payload, _chunks = decompress_zlib_chunks(frame_bytes, off)
 
-def convert(input_path, output_path):
-    inp = Path(input_path)
-    bin_path = pick_first_bin(inp)
-
-    raw = bin_path.read_bytes()
-    outer, payload, chunks = decompress_chunked_payload(raw)
     meshheader, end_off = extract_first_json_object(payload)
 
     v_cnt = int(meshheader.get("vertex_count", 0) or 0)
     t_cnt = int(meshheader.get("triangle_count", 0) or 0)
     if v_cnt == 0 or t_cnt == 0:
-        return
+        raise ValueError("Empty mesh (vertex_count or triangle_count is 0)")
 
-    vertices, triangles, normals, colors = decode_global_arrays(payload, meshheader, end_off)
-
-    # Diagnose index ranges (hilft beim Debug)
-    print("Global vertex_count:", len(vertices))
-    print("Global triangle_count:", len(triangles))
-    print("Triangle index min/max:", int(triangles.min()) if len(triangles) else None, "/", int(triangles.max()) if len(triangles) else None)
-
+    vertices, triangles, _normals, colors = decode_global_arrays(payload, meshheader, end_off)
     V, F, C = merge_blocks_to_single_mesh(vertices, triangles, colors, meshheader)
     glb = export_glb(V, F, C)
+    return glb, outer, meshheader
 
-    out_path = Path(output_path)
-    out_path.write_bytes(glb)
 
-    st = outer.get("stamp") or {}
-    print("\nInput :", bin_path)
-    print("Output:", out_path)
-    print("Stamp :", f"{st.get('sec')}.{str(st.get('nanosec')).zfill(9)}")
-    print("Chunks:", chunks, "Payload bytes:", len(payload))
-    print("Merged:", f"V={len(V)} T={len(F)} Colors={'yes' if C is not None else 'no'}")
-    print("MeshHeader:", f"frame_id={meshheader.get('frame_id')}, message_id={meshheader.get('message_id')}, block_size={meshheader.get('block_size')}")
-
-if __name__ == "__main__":
-    main()
+def save_glb(glb_bytes: bytes, out_path: Path) -> None:
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_bytes(glb_bytes)
