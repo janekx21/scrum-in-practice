@@ -1,3 +1,18 @@
+<script setup lang="ts">
+import { onMounted } from 'vue'
+import { useThreeStore } from '@/stores/useThreeStore'
+import { TresCanvas } from '@tresjs/core'
+import { KeyboardControls } from '@tresjs/cientos'
+import GLTFExample from '@/components/GLTFExample.vue'
+import { useRoute } from 'vue-router'
+
+const route = useRoute()
+const id = route.params['id']
+const store = useThreeStore()
+// On mount, load the 'sample_building' scan
+onMounted(() => store.loadScan(id))
+</script>
+
 <template>
   <div class="fps-container" style="height: calc(100vh - 56px); width: 100%; background: #000;">
     <TresCanvas clear-color="#111" shadows alpha>
@@ -12,7 +27,7 @@
 
       <Suspense>
         <!-- Correctly pass the store's modelUrl to the component -->
-        <GLTFExample v-if="store.scanInfo" :path="store.scanInfo.modelUrl" />
+        <GLTFExample v-if="store.scanInfo" :path="'/api/scan/' + id + '/full.glb'" />
       </Suspense>
 
       <TresGridHelper :args="[500, 500, '#444', '#222']" />
@@ -20,14 +35,3 @@
   </div>
 </template>
 
-<script setup lang="ts">
-import { onMounted } from 'vue'
-import { useThreeStore } from '@/stores/useThreeStore'
-import { TresCanvas } from '@tresjs/core'
-import { OrbitControls, KeyboardControls } from '@tresjs/cientos'
-import GLTFExample from '@/components/GLTFExample.vue'
-
-const store = useThreeStore()
-// On mount, load the 'sample_building' scan
-onMounted(() => store.loadScan('sample_building'))
-</script>
