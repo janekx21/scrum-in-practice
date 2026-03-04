@@ -24,6 +24,7 @@
     "@tresjs/cientos": "^5.4.0",
     "@tresjs/core": "^5.5.0",
     "@types/bootstrap": "^5.2.10",
+    "@vueuse/core": "^14.2.1",
     "bootstrap": "^5.3.8",
     "mande": "^2.0.9",
     "pinia": "^3.0.4",

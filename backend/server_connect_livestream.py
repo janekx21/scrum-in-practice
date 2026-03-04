@@ -3,6 +3,7 @@ import json
 import struct
 import zlib
 import websockets
+from websockets.asyncio.server import serve
 
 from pathlib import Path
 from ws_mesh_frame_to_glb import mesh_frame_bytes_to_glb, save_glb
@@ -143,10 +144,13 @@ def handle_pose(outer: dict, inner: dict | None, payload: bytes | None):
     print("payload_decompressed_bytes:", len(payload))
     # hier kannst du später count berechnen / arrays dekodieren
 
+    if ws_server_socket:
+        ws_server_socket.send(json.dumps(inner))
+
     print(f"{datetime.now()} - Done")
 
 
-async def main():
+async def run_stream_client():
     async with websockets.connect(URI, max_size=None) as ws:
         print(f"Connected: {URI}")
 
@@ -192,6 +196,21 @@ async def main():
             else:
                 print("TEXT:", msg)
 
+async def run_stream_server():
+    print("running ws server")
+    async with serve(echo, "localhost", 8765) as server:
+        print("Now serving ", server.is_serving())
+        await server.serve_forever() 
+
+ws_server_socket: websockets.ServerConnection = None
+
+async def echo(websocket: websockets.ServerConnection):
+    print("new connection with ", websocket.local_address)
+    ws_server_socket = websocket
+    async for message in websocket:
+        await websocket.send(message)
+
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    #asyncio.run(run_stream_client())    
+    asyncio.run(run_stream_server())
