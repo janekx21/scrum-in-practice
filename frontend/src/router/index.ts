@@ -11,7 +11,7 @@ const router = createRouter({
       component: HomeView,
     },
     {
-      path: '/fps',
+      path: '/fps/:id',
       name: 'fps-view',
       component: FPSView,
     }

@@ -46,10 +46,10 @@ const handleFileChange = async (event: Event) => {
     isUploading.value = true
     await uploadScan(name, file)
     alert("Upload successful!")
-    
+
     // DYNAMIC UPDATE: Re-fetch the list after successful upload
-    await loadScans() 
-    
+    await loadScans()
+
   } catch (err: any) {
     alert("Error: " + err.message)
   } finally {
@@ -68,12 +68,12 @@ const handleFileChange = async (event: Event) => {
         <p class="lead mb-4 text-muted">
           Manage and view your architectural 3D scans.
         </p>
-        
+
         <div class="d-grid gap-3 d-sm-flex justify-content-sm-center">
           <RouterLink to="/fps" class="btn btn-primary btn-lg px-5">
             Open Viewer
           </RouterLink>
-          
+
           <button @click="triggerUpload" class="btn btn-outline-success btn-lg px-4" :disabled="isUploading">
             {{ isUploading ? 'Uploading...' : 'Upload New ZIP' }}
           </button>
@@ -96,17 +96,17 @@ const handleFileChange = async (event: Event) => {
                 <thead class="table-light">
                   <tr>
                     <th>Name</th>
-                    <th>Date</th>
-                    <th>Timestamp</th>
-                    <th>Filename</th>
+                    <th>Time</th>
+                    <th></th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr v-for="scan in previousScans" :key="scan.id">
                     <td class="fw-bold">{{ scan.name }}</td>
-                    <td>{{ scan.upload_date }}</td>
-                    <td>{{ scan.upload_timestamp }}</td>
-                    <td class="text-muted small">{{ scan.zip_file }}</td>
+                    <td>{{ scan.upload_datetime }}</td>
+                    <td>
+                      <a class="btn btn-primary w-100" :href="'/fps/' + scan.id">Open</a>
+                    </td>
                   </tr>
                   <tr v-if="previousScans.length === 0">
                     <td colspan="4" class="text-center py-4 text-muted">

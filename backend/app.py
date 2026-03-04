@@ -65,31 +65,14 @@ def init_db():
     """Initialize database schema with the Scan table"""
     con = sqlite3.connect(DATABASE)
     cur = con.cursor()
-    # Existing tables (kept for compatibility)
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS shopping_lists(
-            id TEXT PRIMARY KEY, 
-            name TEXT NOT NULL
-        )
-    """)
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS shopping_list_items(
-            text TEXT NOT NULL, 
-            done BOOLEAN NOT NULL,
-            shopping_list TEXT NOT NULL,
-            FOREIGN KEY(shopping_list) REFERENCES shopping_lists(id) ON DELETE CASCADE
-        )
-    """)
     
-    # NEW SCAN TABLE
     cur.execute("""
         CREATE TABLE IF NOT EXISTS scans (
             id TEXT PRIMARY KEY,
             name TEXT NOT NULL,
-            upload_date TEXT NOT NULL,
-            upload_timestamp TEXT NOT NULL,
+            upload_datetime DATE NOT NULL,
             zip_file BLOB NOT NULL,
-            glb_file BLOB
+            glb_file BLOB NOT NULL
         )
     """)
     con.commit()
@@ -113,6 +96,13 @@ def add_headers(response):
     response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
     return response    
 
+
+###########################################################
+
+@app.route("/")
+def hello_world():
+    return "<p>Hello, World 2!</p>"
+
 @app.route("/upload", methods=["POST"])
 def upload_scan():
     db = get_db()
@@ -122,37 +112,25 @@ def upload_scan():
             return jsonify({"error": "No file part"}), 400
         
         file = request.files['file']
-        file_content = file.read() # Read binary content
+        zip_bytes = file.read()
 
         name = request.form.get('name')
 
         if not name or file.filename == '':
             return jsonify({"error": "Name and File are mandatory"}), 400
 
-        # 1. Create a unique ID and filename
-        new_id = str(uuid.uuid4())
-        # secure_filename prevents directory traversal attacks
-        filename = secure_filename(f"{new_id}_{file.filename}")
-        
-        # 2. Save the ACTUAL file to the 'uploads' folder
-        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        file.save(file_path)
-
-        # 3. Get current time
+        id = str(uuid.uuid4())
+        glb_bytes = convert(zip_bytes)
         now = datetime.now()
-        upload_date = now.strftime("%Y-%m-%d")
-        upload_timestamp = now.strftime("%H:%M:%S")
-        glb_bums = convert(file_content)
 
-        # 4. Store ONLY the filename (the string) in the DB
         cur = db.cursor()
         cur.execute("""
-            INSERT INTO scans (id, name, upload_date, upload_timestamp, zip_file, glb_file)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (new_id, name, upload_date, upload_timestamp, filename, glb_bums))
+            INSERT INTO scans (id, name, upload_datetime, zip_file, glb_file)
+            VALUES (?, ?, ?, ?, ?)
+        """, (id, name, now, zip_bytes, glb_bytes))
         db.commit()
 
-        return jsonify({"id": new_id, "message": "Upload successful"}), 201
+        return jsonify({"id": id, "message": "Upload successful"}), 201
 
     except Exception as e:
         if 'db' in locals():
@@ -164,7 +142,7 @@ def get_all_scans():
     try:
         db = get_db()
         # Fetching all scans, ordered by newest first
-        cur = db.execute("SELECT id, name, upload_date, upload_timestamp  FROM scans ORDER BY upload_date DESC, upload_timestamp DESC")
+        cur = db.execute("SELECT id, name,  upload_datetime FROM scans ORDER BY upload_datetime DESC")
         rows = cur.fetchall()
         
         # Convert sqlite3.Row objects to a list of dictionaries
@@ -173,105 +151,33 @@ def get_all_scans():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route("/")
-def hello_world():
-    return "<p>Hello, World 2!</p>"
-
-@app.get("/shopping-list/")
-def shopping_list_all_get():
-    app.logger.debug('Get all shopping lists')
-
-    cur = get_db().cursor()
-    res = cur.execute("SELECT id, name FROM shopping_lists")
-    
-    return list(map(lambda row: dict(row), res.fetchall()))
-
-@app.get("/shopping-list/<uuid:id>")
-def shopping_list_single_get(id: uuid.UUID):
-    app.logger.debug('Get single shopping list')
-
-    cur = get_db().cursor()
-    res = cur.execute("SELECT id, name FROM shopping_lists WHERE id = :id", {'id': str(id)})
-    row = res.fetchone()
-
-    if row is None:
-        abort(404)
-
-    (id, name) = row
-
-    res = cur.execute("SELECT text, done FROM shopping_list_items WHERE shopping_list = :id", {'id': str(id)})
-    items = list(map(lambda row: {"text": row["text"], "done": row["done"] == 1}, res.fetchall())) 
-
-    shopping_list = {
-        'id': id,
-        'name': name,
-        'items': items 
-    }
-    
-    return shopping_list
-
-@app.patch("/shopping-list/<uuid:id>")
-def shopping_list_single_post(id: uuid.UUID):
-    json = request.json
-    if json is None:
-        abort(400)
-        return
-
-    db = get_db()
-    cur = db.cursor()
-
-    try:
-        if 'name' in json and isinstance(json['name'], str):
-            cur.execute("UPDATE shopping_lists SET name = :name WHERE id = :id", {'id': str(id), 'name': json['name']})
-
-        if 'items' in json and isinstance(json['items'], list):
-            data = list(map(lambda item:
-                {'shopping_list': str(id), 'text': item['text'], 'done': item['done']}, json['items']))
-            
-            cur.execute("DELETE FROM shopping_list_items WHERE shopping_list=:shopping_list", {'shopping_list': str(id)})
-            print(data)
-            cur.executemany("INSERT INTO shopping_list_items (text, shopping_list, done) VALUES (:text, :shopping_list, :done)", data)
-
-        db.commit()
-        return {"ok": True}
-
-    except sqlite3.Error as e:
-            db.rollback()
-            app.logger.error(f"Database error: {e}")
-            abort(500, "Database error")
-
-@app.post("/shopping-list/")
-def shopping_list_create():
-    """Create a new shopping list"""
-
-    json = request.json
-    if json is None:
-        abort(400)
-        return
-    
-    db = get_db()
-    cur = db.cursor()
-    
-    new_id = str(uuid.uuid4())
-    name = json["name"] if "name" in json and isinstance(json["name"], str) else ""
-    cur.execute("INSERT INTO shopping_lists (id, name) VALUES (:id, :name)", {"id": new_id, "name": name})
-    db.commit()
-    
-    return {"id": new_id, "name": json['name'], "items": []}, 201
-
 @app.route("/scan/<scan_id>")
 def get_scan_metadata(scan_id):
+    cur = get_db().cursor()
+    res = cur.execute("SELECT name, upload_datetime FROM scans WHERE id = :id", {'id': str(scan_id)})
+    row = res.fetchone()
+
     return {
         "id": scan_id,
-        "modelUrl": f"/api/models/{scan_id}.glb", # Note: keep /api here so the frontend can find it through the proxy
-        "format": "glb",
-        "timestamp": "2026-03-02"
+        "name": row["name"],
+        "upload_datetime": row["upload_datetime"],
     }
 
-# 2. Matches /models/<filename>.glb
-@app.route("/models/<filename>.glb")
-def serve_model(filename):
-    return send_from_directory("assets", f"{filename}.glb", mimetype='model/gltf-binary')
+@app.route("/scan/<scan_id>/full.glb")
+def serve_model(scan_id):
+    print("request glb ", scan_id)
+    cur = get_db().cursor()
+    res = cur.execute("SELECT glb_file FROM scans WHERE id = :id", {'id': str(scan_id)})
+    row = res.fetchone()
+    glb_bytes = row["glb_file"]
+
+    print("sending ", len(glb_bytes), " bytes of glb")
+
+    response = make_response(glb_bytes)
+    response.headers.set('Content-Type', 'model/gltf-binary')
+    response.headers.set(
+        'Content-Disposition', 'attachment', filename='fill.glb')
+    return response
 
 
 if __name__ == "__main__":
