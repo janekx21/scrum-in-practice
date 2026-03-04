@@ -111,7 +111,7 @@ def consume_array(payload: bytes, off: int, dtype: str, count: int, stride: int)
 
 """
     Reads the global buffers as described by meshheader counts.
-    We will then rebuild a correct merged mesh from blocks.
+    then rebuild a correct merged mesh from blocks.
 """
 def decode_global_arrays(payload: bytes, meshheader: dict, off_after_json: int):
     off = off_after_json
