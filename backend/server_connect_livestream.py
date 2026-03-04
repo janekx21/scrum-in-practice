@@ -6,6 +6,7 @@ import websockets
 
 from pathlib import Path
 from ws_mesh_frame_to_glb import mesh_frame_bytes_to_glb, save_glb
+from datetime import datetime
 
 FRAME_COUNTER = 0
 
@@ -98,7 +99,7 @@ def parse_frame(message: bytes) -> tuple[dict, dict | None, bytes | None]:
     return outer, inner, payload
 
 def handle_mesh(frame_bytes: bytes, outer: dict):
-    print("== MESH ==")
+    print(f"{datetime.now()} == MESH == ")
     global FRAME_COUNTER
     try:
         glb, outer_hdr, meshheader = mesh_frame_bytes_to_glb(frame_bytes)
@@ -115,10 +116,12 @@ def handle_mesh(frame_bytes: bytes, outer: dict):
 
     except Exception as e:
         print("GLB FAIL:", e)
+    
+    print(f"{datetime.now()} - Done")
 
 
 def handle_pose(outer: dict, inner: dict | None, payload: bytes | None):
-    print("== POSE ==")
+    print(f"{datetime.now()} == POSE ==")
     if inner is None or payload is None:
         print("header-only frame (no chunks/payload)")
         return
@@ -140,6 +143,8 @@ def handle_pose(outer: dict, inner: dict | None, payload: bytes | None):
     print("payload_decompressed_bytes:", len(payload))
     # hier kannst du später count berechnen / arrays dekodieren
 
+    print(f"{datetime.now()} - Done")
+
 
 async def main():
     async with websockets.connect(URI, max_size=None) as ws:
@@ -160,8 +165,13 @@ async def main():
         print(f"Started dataset: {dataset}")
 
         while True:
-            # TODO asynchron machen
-            msg = await ws.recv()
+            # TODO asynchron machen??
+            try:
+                # max. 5 Sekunden auf neue Nachricht warten
+                msg = await asyncio.wait_for(ws.recv(), timeout=5.0)
+            except asyncio.TimeoutError:
+                print("No message for 5 seconds. Closing loop.")
+                break
 
             if isinstance(msg, bytes):
                 try:
