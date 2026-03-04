@@ -176,7 +176,7 @@ def serve_model(scan_id):
     response = make_response(glb_bytes)
     response.headers.set('Content-Type', 'model/gltf-binary')
     response.headers.set(
-        'Content-Disposition', 'attachment', filename='fill.glb')
+        'Content-Disposition', 'attachment', filename='full.glb')
     return response
 
 

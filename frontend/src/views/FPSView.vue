@@ -15,14 +15,14 @@ onMounted(() => store.loadScan(id))
 
 <template>
   <div class="fps-container" style="height: calc(100vh - 56px); width: 100%; background: #000;">
-    <TresCanvas clear-color="#111" shadows alpha>
+    <TresCanvas clear-color="#c5c5c5" alpha>
       <!-- Move camera further back [40, 40, 40] to see large buildings -->
       <TresPerspectiveCamera :position="[0, 0, 0]" :look-at="[10, 0, 0]" />
       <!-- <OrbitControls make-default /> -->
       <KeyboardControls />
 
       <!-- Brighter lights for building scans -->
-      <TresAmbientLight :intensity="2.0" />
+      <TresAmbientLight :intensity="1.0" />
       <TresDirectionalLight :position="[20, 40, 20]" :intensity="3.0" cast-shadow />
 
       <Suspense>
