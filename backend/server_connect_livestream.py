@@ -117,8 +117,9 @@ async def handle_mesh(frame_bytes: bytes, outer: dict):
 
     except Exception as e:
         print("GLB FAIL:", e)
+        return
 
-    if ws_server_socket:
+    if ws_server_socket and glb:
         await ws_server_socket.send(glb)
 
     print(f"{datetime.now()} - Done")
@@ -177,7 +178,7 @@ async def run_stream_client():
         print("Datasets:", datasets)
 
         # TODO decide on what stream we want to go with
-        dataset = datasets[1]
+        dataset = datasets[2]
         await ws.send(f"start:{dataset}")
         print(f"Started dataset: {dataset}")
 
