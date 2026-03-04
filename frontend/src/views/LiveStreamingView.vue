@@ -1,5 +1,20 @@
+<script setup lang="ts">
+import { useWebSocket } from '@vueuse/core'
+import { onMounted } from 'vue'
+const toggleStream = () => {
+  alert("Attempting to connect to EVOK hardware...")
+}
+
+const { status, data, send, open, close, ws } = useWebSocket(
+  `ws://${location.host}/ws`
+)
+onMounted(() => open())
+
+</script>
 <template>
   <div class="container py-5 text-center">
+    {{ status }}
+    {{ data }}
     <div class="card shadow-lg p-5">
       <h2 class="display-5 fw-bold text-danger mb-4">EVOK Live Stream</h2>
       <div class="ratio ratio-16x9 bg-dark d-flex align-items-center justify-content-center mb-4">
@@ -13,8 +28,3 @@
   </div>
 </template>
 
-<script setup lang="ts">
-const toggleStream = () => {
-  alert("Attempting to connect to EVOK hardware...")
-}
-</script>
