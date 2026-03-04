@@ -1,29 +1,31 @@
 <script setup lang="ts">
-import { useLoader } from '@tresjs/core'
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import { type GLTF, GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
-import { watch } from 'vue'
+import { watch, shallowRef } from 'vue'
 import * as THREE from 'three'
 
 const props = defineProps<{
-  path: string
+  path?: string
+  raw_data?: ArrayBuffer
 }>()
 
 const dracoLoader = new DRACOLoader()
 dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/')
 
-const { state: model, error } = useLoader(
-  GLTFLoader,
-  props.path, // Use the prop passed from the view
-  {
-    extensions: (loader) => {
-      if (loader instanceof GLTFLoader) {
-        loader.setDRACOLoader(dracoLoader)
-      }
-    },
-  },
-)
-
+const model = shallowRef<GLTF>()
+if (props.raw_data) {
+  const loader = new GLTFLoader()
+  loader.setDRACOLoader(dracoLoader)
+  loader.parse(props.raw_data, 'frame', (m) => {
+    model.value = m
+  })
+} else {
+  const loader = new GLTFLoader()
+  loader.setDRACOLoader(dracoLoader)
+  loader.load(props.path!, (m) => {
+    model.value = m
+  })
+}
 
 watch(model, (newModel) => {
   if (newModel) {
@@ -39,17 +41,12 @@ watch(model, (newModel) => {
   }
 })
 
-watch(error, (e) => {
-  if (e) console.error("3D Model Loading Error:", e)
-})
+//watch(error, (e) => {
+//  if (e) console.error('3D Model Loading Error:', e)
+//})
 </script>
 
 <template>
   <!-- Render the entire scene from the file, not just one node -->
-  <primitive
-    v-if="model"
-    :object="model.scene"
-    :rotation="[-Math.PI / 2, 0, 0]"
-  >
-  </primitive>
+  <primitive v-if="model" :object="model.scene" :rotation="[-Math.PI / 2, 0, 0]"> </primitive>
 </template>
