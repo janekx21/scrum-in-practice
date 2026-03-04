@@ -30,6 +30,7 @@
             python3Packages.numpy
             python3Packages.trimesh
             python3Packages.scipy
+            python3Packages.websockets
 
             # Python dev
             ty

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { type GLTF, GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
-import { watch, shallowRef } from 'vue'
+import { watch, shallowRef, onMounted } from 'vue'
 import * as THREE from 'three'
 
 const props = defineProps<{
@@ -13,10 +13,13 @@ const dracoLoader = new DRACOLoader()
 dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/')
 
 const model = shallowRef<GLTF>()
+onMounted(() => {
 if (props.raw_data) {
+  console.log("loading model...", props.raw_data)
   const loader = new GLTFLoader()
   loader.setDRACOLoader(dracoLoader)
   loader.parse(props.raw_data, 'frame', (m) => {
+    console.log("model loaded!")
     model.value = m
   })
 } else {
@@ -26,6 +29,8 @@ if (props.raw_data) {
     model.value = m
   })
 }
+  
+})
 
 watch(model, (newModel) => {
   if (newModel) {
@@ -40,6 +45,7 @@ watch(model, (newModel) => {
     })
   }
 })
+
 
 //watch(error, (e) => {
 //  if (e) console.error('3D Model Loading Error:', e)

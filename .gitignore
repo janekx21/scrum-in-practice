@@ -5,3 +5,4 @@
 **/__pycache__/
 backend/main.db
 backend/uploads
+backend/glbs

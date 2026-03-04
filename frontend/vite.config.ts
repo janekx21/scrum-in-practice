@@ -40,6 +40,15 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
+      '/ws': {
+        target: 'ws://127.0.0.1:8756',
+        ws: true,
+        rewriteWsOrigin: true,
+        changeOrigin: true,
+        configure: (proxy) => {
+proxy.on('error', (err) => console.log('proxy error', err))
+    proxy.on('proxyReqWs', (req) => console.log('proxying ws', req.url))        } 
+      },
     },
   },
 })
