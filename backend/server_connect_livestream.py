@@ -4,6 +4,11 @@ import struct
 import zlib
 import websockets
 
+from pathlib import Path
+from ws_mesh_frame_to_glb import mesh_frame_bytes_to_glb, save_glb
+
+FRAME_COUNTER = 0
+
 URI = "ws://141.44.17.48:8768"
 
 
@@ -92,44 +97,24 @@ def parse_frame(message: bytes) -> tuple[dict, dict | None, bytes | None]:
     inner, _ = extract_first_json_object(payload, 0)
     return outer, inner, payload
 
-
-def handle_mesh(outer: dict, inner: dict | None, payload: bytes | None):
+def handle_mesh(frame_bytes: bytes, outer: dict):
     print("== MESH ==")
-    if inner is None or payload is None:
-        print("header-only frame (no chunks/payload)")
-        return
+    global FRAME_COUNTER
+    try:
+        glb, outer_hdr, meshheader = mesh_frame_bytes_to_glb(frame_bytes)
 
-    # nur Analyse/Metadaten
-    vc = inner.get("vertex_count")
-    vs = inner.get("vertex_stride")
-    vd = inner.get("vertex_dtype")
-    tc = inner.get("triangle_count")
-    ts = inner.get("triangle_stride")
-    td = inner.get("triangle_dtype")
+        out = Path("glbs") / f"frame_{FRAME_COUNTER:06d}.glb"
+        # save_glb(glb, out)
 
-    print("stamp:", outer.get("stamp"))
-    print("vertex:", {"count": vc, "stride": vs, "dtype": vd})
-    print("triangles:", {"count": tc, "stride": ts, "dtype": td})
+        # TODO here is the GLB as the "glb" thing
 
-    if "normal_count" in inner:
-        print("normals:", {
-            "count": inner.get("normal_count"),
-            "stride": inner.get("normal_stride"),
-            "dtype": inner.get("normal_dtype"),
-        })
+        st = outer_hdr.get("stamp") or {}
+        print("GLB OK:", out, "stamp:", f"{st.get('sec')}.{str(st.get('nanosec')).zfill(9)}",
+              "V:", meshheader.get("vertex_count"), "T:", meshheader.get("triangle_count"))
+        FRAME_COUNTER += 1
 
-    if "color_bytes" in inner:
-        print("colors:", {
-            "color_bytes": inner.get("color_bytes"),
-            "color_dtype": inner.get("color_dtype"),
-            "color_stride": inner.get("color_stride"),
-        })
-
-    blocks = inner.get("blocks")
-    if isinstance(blocks, list):
-        print("blocks:", len(blocks))
-
-    print("payload_decompressed_bytes:", len(payload))
+    except Exception as e:
+        print("GLB FAIL:", e)
 
 
 def handle_pose(outer: dict, inner: dict | None, payload: bytes | None):
@@ -175,6 +160,7 @@ async def main():
         print(f"Started dataset: {dataset}")
 
         while True:
+            # TODO asynchron machen
             msg = await ws.recv()
 
             if isinstance(msg, bytes):
@@ -186,7 +172,7 @@ async def main():
 
                 ftype = (outer.get("type") or "").lower()
                 if ftype == "mesh":
-                    handle_mesh(outer, inner, payload)
+                    handle_mesh(msg, outer)
                 elif ftype == "pose":
                     handle_pose(outer, inner, payload)
                 else:
