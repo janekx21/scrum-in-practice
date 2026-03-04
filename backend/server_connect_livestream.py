@@ -99,7 +99,7 @@ def parse_frame(message: bytes) -> tuple[dict, dict | None, bytes | None]:
     inner, _ = extract_first_json_object(payload, 0)
     return outer, inner, payload
 
-def handle_mesh(frame_bytes: bytes, outer: dict):
+async def handle_mesh(frame_bytes: bytes, outer: dict):
     print(f"{datetime.now()} == MESH == ")
     global FRAME_COUNTER
     try:
@@ -117,11 +117,14 @@ def handle_mesh(frame_bytes: bytes, outer: dict):
 
     except Exception as e:
         print("GLB FAIL:", e)
-    
+
+    if ws_server_socket:
+        await ws_server_socket.send(glb)
+
     print(f"{datetime.now()} - Done")
 
 
-def handle_pose(outer: dict, inner: dict | None, payload: bytes | None):
+async def handle_pose(outer: dict, inner: dict | None, payload: bytes | None):
     print(f"{datetime.now()} == POSE ==")
     if inner is None or payload is None:
         print("header-only frame (no chunks/payload)")
@@ -145,10 +148,20 @@ def handle_pose(outer: dict, inner: dict | None, payload: bytes | None):
     # hier kannst du später count berechnen / arrays dekodieren
 
     if ws_server_socket:
-        ws_server_socket.send(json.dumps(inner))
+        
+        await ws_server_socket.send(json.dumps(decode_pose(payload)))
+        print("WS Server: send pose data via websocket")
 
     print(f"{datetime.now()} - Done")
 
+def decode_pose(pose_bytes: bytes) -> dict:
+    # TODO return pose data
+    {
+        "count": 0,
+        "times": [],
+        "poses":[],
+        "oriantations":[]
+    }
 
 async def run_stream_client():
     async with websockets.connect(URI, max_size=None) as ws:
@@ -186,9 +199,9 @@ async def run_stream_client():
 
                 ftype = (outer.get("type") or "").lower()
                 if ftype == "mesh":
-                    handle_mesh(msg, outer)
+                    await handle_mesh(msg, outer)
                 elif ftype == "pose":
-                    handle_pose(outer, inner, payload)
+                    await handle_pose(outer, inner, payload)
                 else:
                     print("== UNKNOWN TYPE ==")
                     print("type:", outer.get("type"))
@@ -205,12 +218,19 @@ async def run_stream_server():
 ws_server_socket: websockets.ServerConnection = None
 
 async def echo(websocket: websockets.ServerConnection):
+    global ws_server_socket
     print("new connection with ", websocket.local_address)
     ws_server_socket = websocket
     async for message in websocket:
         await websocket.send(message)
 
 
+async def main():
+    await asyncio.gather(
+        run_stream_client(),
+        run_stream_server()
+    )
+
+
 if __name__ == "__main__":
-    #asyncio.run(run_stream_client())    
-    asyncio.run(run_stream_server())
+    asyncio.run(main())

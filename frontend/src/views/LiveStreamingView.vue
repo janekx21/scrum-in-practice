@@ -1,14 +1,20 @@
 <script setup lang="ts">
 import { useWebSocket } from '@vueuse/core'
-import { onMounted } from 'vue'
+import { onMounted, watch } from 'vue'
 const toggleStream = () => {
   alert("Attempting to connect to EVOK hardware...")
 }
 
 const { status, data, send, open, close, ws } = useWebSocket(
-  `ws://${location.host}/ws`
+  `ws:/localhost:8765/ws`
 )
 onMounted(() => open())
+watch(status, () => {
+  console.log(status)
+})
+watch(data, () => {
+  console.log(data)
+})
 
 </script>
 <template>
