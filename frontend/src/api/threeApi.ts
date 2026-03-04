@@ -1,5 +1,5 @@
 import { mande } from 'mande'
-import type { ScanMetadata } from '@/model'
+import type { ScanMetadata, ScanRecord } from '@/model'
 
 // Change this to exactly '/api'
 const api = mande('/api') 
@@ -26,4 +26,8 @@ export async function uploadScan(name: string, file: File) {
   }
 
   return await response.json()
+}
+
+export async function fetchAllScans(): Promise<ScanRecord[]> {
+  return await api.get<ScanRecord[]>('/scans')
 }
