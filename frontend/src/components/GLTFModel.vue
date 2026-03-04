@@ -29,8 +29,6 @@ watch(model, (newModel) => {
   if (newModel) {
     newModel.scene.traverse((child) => {
       if (child instanceof THREE.Mesh) {
-        const oldMat = child.material
-
         // Fix the material properties
         child.material = child.material.clone()
         child.material.metalness = 0
