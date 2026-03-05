@@ -139,7 +139,7 @@ async def handle_mesh(frame_bytes: bytes, outer: dict):
 
     print(f"{datetime.now()} - Done")
 
-    if ws_server_socket:
+    if ws_server_socket and ws_server_socket.state == websockets.State.OPEN:
         await ws_server_socket.send(glb)
 
     print(f"{datetime.now()} - Done")
@@ -168,7 +168,7 @@ async def handle_pose(outer: dict, inner: dict | None, payload: bytes | None):
     print("payload_decompressed_bytes:", len(payload))
     # hier kannst du später count berechnen / arrays dekodieren
 
-    if ws_server_socket:
+    if ws_server_socket and ws_server_socket.state == websockets.State.OPEN:
         
         await ws_server_socket.send(json.dumps(decode_pose(payload)))
         print("WS Server: send pose data via websocket")
@@ -282,8 +282,9 @@ async def run_stream_client(channel):
         await ws.send(f"start:{channel}")
         print(f"Backend | Started dataset: {channel}")
 
-        while True:
+        while ws_server_socket.state == websockets.State.OPEN:
             # TODO asynchron machen??
+            print("state ",ws_server_socket.state )
             try:
                 # max. 5 Sekunden auf neue Nachricht warten
                 msg = await asyncio.wait_for(ws.recv(), timeout=5.0)
@@ -310,6 +311,11 @@ async def run_stream_client(channel):
             else:
                 print("TEXT:", msg)
 
+        print("Closing ws client connection...")
+        await ws.close()
+    print("WS client closed")
+ 
+
 async def run_stream_server(channel):
     async def echo(websocket: websockets.ServerConnection):
         global ws_server_socket
@@ -318,7 +324,8 @@ async def run_stream_server(channel):
         ws_server_socket = websocket
         async for message in websocket:
             await websocket.send(message)
-        task.cancel()
+        await websocket.close()
+        # task.cancel()
 
     print("running ws server")
     async with serve(echo, "localhost", 8765) as server:
