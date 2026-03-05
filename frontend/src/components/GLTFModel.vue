@@ -15,11 +15,9 @@ dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5
 const model = shallowRef<GLTF>()
 onMounted(() => {
 if (props.raw_data) {
-  console.log("loading model...", props.raw_data)
   const loader = new GLTFLoader()
   loader.setDRACOLoader(dracoLoader)
   loader.parse(props.raw_data, 'frame', (m) => {
-    console.log("model loaded!")
     model.value = m
   })
 } else {
