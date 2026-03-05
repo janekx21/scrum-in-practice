@@ -33,5 +33,8 @@ export async function fetchAllScans(): Promise<ScanRecord[]> {
 }
 
 export async function fetchAllStrams(): Promise<string[]> {
-  return await api.get<string[]>('/steams')
+  return await api.get<string[]>('/streams')
+}
+export async function startStream(channel: string): Promise<void> {
+  await api.post(`/streams/${channel}/start`)
 }

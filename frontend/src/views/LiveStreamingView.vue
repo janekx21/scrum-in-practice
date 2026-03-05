@@ -2,7 +2,7 @@
 import { useWebSocket } from '@vueuse/core'
 import { onMounted, ref, watch } from 'vue'
 import MultiModelScene from '@/components/MultiModelScene.vue'
-import { fetchAllStrams } from '@/api/threeApi'
+import { fetchAllStrams, startStream } from '@/api/threeApi'
 
 
 const toggleStream = () => {
@@ -12,7 +12,6 @@ const toggleStream = () => {
 const { status, data, send, open, close, ws } = useWebSocket(
   `ws:/localhost:8765/ws`, {
     autoReconnect: true,
-    
   }
 )
 onMounted(() => open())
@@ -30,12 +29,16 @@ watch(data, () => {
 })
 
 const model_bytes = ref<ArrayBuffer[]>([])
-const selectedChannel = ref<string>()
-const allStreams = ref<string>([])
+const selectedChannel = ref<string | null>(null)
+const allStreams = ref<string[]>([])
+
+const frameTrigger = 0
 
 function connectToStream(channel: string) {
-
+  selectedChannel.value = channel
+  startStream(channel)
 }
+
 
 onMounted(() => {
    fetchAllStrams().then((s) => {
