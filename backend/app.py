@@ -8,6 +8,7 @@ from datetime import datetime
 import os
 from werkzeug.utils import secure_filename
 from run_pipeline import convert
+from get_list_from_server import get_streams
 
 # Notes 
 # =====
@@ -179,6 +180,9 @@ def serve_model(scan_id):
         'Content-Disposition', 'attachment', filename='full.glb')
     return response
 
+@app.get("/streams")
+def get_steam_list():
+    return get_streams()
 
 if __name__ == "__main__":
     app.run(debug=True, port=5001)
