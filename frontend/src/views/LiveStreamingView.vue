@@ -55,11 +55,6 @@ onMounted(() => {
 watch(selectedChannel, () => {
   if (selectedChannel.value == null) {
     model_bytes.value = []
-<<<<<<< HEAD
-  } 
-})
-
-=======
     close()
   } 
 })
@@ -68,7 +63,6 @@ onUnmounted(() => {
   close()
 })
 
->>>>>>> 136bcf56b87437211bc0f4d608cac7164c162f36
 </script>
 <template>
 
