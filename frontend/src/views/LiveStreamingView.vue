@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useWebSocket } from '@vueuse/core'
-import { onMounted, ref, watch } from 'vue'
+import { onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
 import MultiModelScene from '@/components/MultiModelScene.vue'
 import { fetchAllStrams, startStream } from '@/api/threeApi'
 
@@ -20,17 +20,21 @@ watch(status, () => {
 })
 watch(data, () => {
   if (data.value instanceof Blob) {
-    console.log("here a glb")
 
     data.value.arrayBuffer().then((b) => {
       model_bytes.value.push(b)
     })
   } else {
-    console.log(data)
+    const pose = JSON.parse(data.value) as {poses: number[][]}
+    for(const p of pose.poses) {
+      points.value.push(p)
+      console.log(points.value)
+    }
   }
 })
 
 const model_bytes = ref<ArrayBuffer[]>([])
+const points = shallowRef<number[][]>([[0,0,0], [0,0,1]])
 const selectedChannel = ref<string | null>(null)
 const allStreams = ref<string[]>([])
 
@@ -53,6 +57,10 @@ watch(selectedChannel, () => {
     model_bytes.value = []
     close()
   } 
+})
+
+onUnmounted(() => {
+  close()
 })
 
 </script>
@@ -92,7 +100,7 @@ watch(selectedChannel, () => {
 
     <!-- 3D Viewport -->
     <div v-if="selectedChannel" class="w-100 h-100">
-      <MultiModelScene :model_bytes="model_bytes" :model_paths="[]"/>
+      <MultiModelScene :path_points="points"  :model_bytes="model_bytes" :model_paths="[]"/>
     </div>
     
     <div v-else class="w-100 h-100 d-flex align-items-center justify-content-center text-secondary">
