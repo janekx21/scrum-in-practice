@@ -25,6 +25,8 @@ watch(data, () => {
     data.value.arrayBuffer().then((b) => {
       model_bytes.value.push(b)
     })
+  } else {
+    console.log(data)
   }
 })
 
@@ -44,6 +46,12 @@ onMounted(() => {
    fetchAllStrams().then((s) => {
     allStreams.value  = s
   })
+})
+
+watch(selectedChannel, () => {
+  if (selectedChannel.value == null) {
+    model_bytes.value = []
+  } 
 })
 
 </script>
