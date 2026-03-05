@@ -180,6 +180,9 @@ def serve_model(scan_id):
         'Content-Disposition', 'attachment', filename='full.glb')
     return response
 
+@app.get("/streams")
+def get_steam_list():
+    return get_streams()
 
 if __name__ == "__main__":
     app.run(debug=True, port=5001)
