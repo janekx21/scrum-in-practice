@@ -188,7 +188,7 @@ def get_steam_list():
 
 @app.post("/streams/<channel>/start")
 def stat_steam(channel):
-    print("start stream ", channel)
+    print("Frontend -> Backend | start stream ", channel)
     start(channel)
 
 if __name__ == "__main__":
