@@ -33,7 +33,7 @@ function isMobile(): boolean {
       <TresAmbientLight :intensity="1.0" />
       <TresDirectionalLight :position="[20, 40, 20]" :intensity="3.0" cast-shadow />
 
-      <TresGridHelper :args="[500, 500, '#444', '#222']" />
+      <TresGridHelper :args="[500, 500, '#444', '#222']" :position="[0, -2, 0]" />
 
       <GltfModel v-for="path of model_paths" :key="path" :path="path" />
       <GltfModel v-for="(data,i) of model_bytes" :key="i" :raw_data="data" />
