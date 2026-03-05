@@ -30,7 +30,7 @@ const handleFileChange = async (event: Event) => {
   const target = event.target as HTMLInputElement
   if (!target.files || target.files.length === 0) return
 
-  const file = target.files[0]
+  const file = target.files[0]!
   if (!file.name.endsWith('.zip')) {
     alert('Please upload only .zip files.')
     return
