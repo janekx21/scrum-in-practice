@@ -310,7 +310,16 @@ async def run_stream_client(channel):
             else:
                 print("TEXT:", msg)
 
-async def run_stream_server():
+async def run_stream_server(channel):
+    async def echo(websocket: websockets.ServerConnection):
+        global ws_server_socket
+        print("new connection with ", websocket.local_address)
+        task = asyncio.create_task(run_stream_client(channel))
+        ws_server_socket = websocket
+        async for message in websocket:
+            await websocket.send(message)
+        task.cancel()
+
     print("running ws server")
     async with serve(echo, "localhost", 8765) as server:
         print("Now serving ", server.is_serving())
@@ -318,18 +327,9 @@ async def run_stream_server():
 
 ws_server_socket: websockets.ServerConnection = None
 
-async def echo(websocket: websockets.ServerConnection):
-    global ws_server_socket
-    print("new connection with ", websocket.local_address)
-    ws_server_socket = websocket
-    async for message in websocket:
-        await websocket.send(message)
-
-
 async def start_bundle(channel):
     await asyncio.gather(
-        run_stream_client(channel),
-        run_stream_server()
+        run_stream_server(channel)
     )
 
 def start(channel):
