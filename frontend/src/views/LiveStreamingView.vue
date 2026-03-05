@@ -51,6 +51,7 @@ onMounted(() => {
 watch(selectedChannel, () => {
   if (selectedChannel.value == null) {
     model_bytes.value = []
+    close()
   } 
 })
 
@@ -81,9 +82,9 @@ watch(selectedChannel, () => {
           <div v-else>
             <p class="small text-success mb-1">Active: {{ selectedChannel }}</p>
             <p class="extra-small text-muted mb-3">Frame ID: {{ frameTrigger }}</p>
-            <button @click="selectedChannel = null" class="btn btn-outline-light btn-sm w-100">
+            <RouterLink to="/" class="btn btn-outline-light btn-sm w-100"r>
               Disconnect
-            </button>
+            </RouterLink>
           </div>
         </div>
       </div>
