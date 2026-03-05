@@ -9,6 +9,8 @@ import os
 from werkzeug.utils import secure_filename
 from run_pipeline import convert
 from get_list_from_server import get_streams
+from server_connect_livestream import start
+import asyncio
 
 # Notes 
 # =====
@@ -183,6 +185,11 @@ def serve_model(scan_id):
 @app.get("/streams")
 def get_steam_list():
     return get_streams()
+
+@app.post("/streams/<channel>/start")
+def stat_steam(channel):
+    print("start stream ", channel)
+    start(channel)
 
 if __name__ == "__main__":
     app.run(debug=True, port=5001)

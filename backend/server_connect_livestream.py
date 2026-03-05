@@ -261,7 +261,7 @@ def decode_pose(pose_bytes: bytes) -> dict:
 
 ##===========================================
 
-async def run_stream_client():
+async def run_stream_client(channel):
     async with websockets.connect(URI, max_size=None) as ws:
         print(f"Connected: {URI}")
 
@@ -275,9 +275,12 @@ async def run_stream_client():
         print("Datasets:", datasets)
 
         # TODO decide on what stream we want to go with
-        dataset = datasets[2]
-        await ws.send(f"start:{dataset}")
-        print(f"Started dataset: {dataset}")
+        if channel not in datasets:
+            print("Unexpected channel name")
+            return
+            
+        await ws.send(f"start:{channel}")
+        print(f"Started dataset: {channel}")
 
         while True:
             # TODO asynchron machen??
@@ -323,12 +326,15 @@ async def echo(websocket: websockets.ServerConnection):
         await websocket.send(message)
 
 
-async def main():
+async def start_bundle(channel):
     await asyncio.gather(
-        run_stream_client(),
+        run_stream_client(channel),
         run_stream_server()
     )
 
+def start(channel):
+    asyncio.run(start_bundle(channel))
+
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(start_bundle("set_01"))
