@@ -31,3 +31,7 @@ export async function uploadScan(name: string, file: File) {
 export async function fetchAllScans(): Promise<ScanRecord[]> {
   return await api.get<ScanRecord[]>('/scans')
 }
+
+export async function fetchAllStrams(): Promise<string[]> {
+  return await api.get<string[]>('/steams')
+}
