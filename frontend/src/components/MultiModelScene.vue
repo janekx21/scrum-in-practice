@@ -2,11 +2,19 @@
 import { TresCanvas } from '@tresjs/core'
 import { KeyboardControls, OrbitControls } from '@tresjs/cientos'
 import GltfModel from '@/components/GLTFModel.vue'
+import { computed } from 'vue'
 
-const { model_paths, model_bytes } = defineProps<{
+const props = defineProps<{
   model_paths: string[]
   model_bytes: ArrayBuffer[]
+  path_points?: number[][]
 }>()
+
+// Flatten points for the TresLine geometry
+const flattenedPoints = computed(() => {
+  if (!props.path_points || props.path_points.length < 2) return new Float32Array(0)
+  return new Float32Array(props.path_points.flat())
+})
 
 function isMobile(): boolean {
   return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
@@ -29,6 +37,29 @@ function isMobile(): boolean {
 
       <GltfModel v-for="path of model_paths" :key="path" :path="path" />
       <GltfModel v-for="(data,i) of model_bytes" :key="i" :raw_data="data" />
+
+      <!-- Path Visualization (Red Line and Dot) -->
+      <TresGroup :rotation="[-Math.PI / 2, 0, 0]">
+        <TresLine v-if="flattenedPoints.length > 0">
+          <TresBufferGeometry>
+            <TresBufferAttribute
+              attach="attributes-position"
+              :count="flattenedPoints.length / 3"
+              :array="flattenedPoints"
+              :item-size="3"
+            />
+          </TresBufferGeometry>
+          <TresLineBasicMaterial color="#ff0000" :linewidth="5" :depth-test="true" />
+        </TresLine>
+
+        <TresMesh 
+          v-if="props.path_points && props.path_points.length > 0" 
+          :position="props.path_points[props.path_points.length - 1]"
+        >
+          <TresSphereGeometry :args="[0.05, 16, 16]" />
+          <TresMeshBasicMaterial color="#ff0000" :depth-test="true" />
+        </TresMesh>
+      </TresGroup>
     </TresCanvas>
   </div>
 </template>
