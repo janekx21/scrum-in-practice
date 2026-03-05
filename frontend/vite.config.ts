@@ -45,9 +45,6 @@ export default defineConfig({
         ws: true,
         rewriteWsOrigin: true,
         changeOrigin: true,
-        configure: (proxy) => {
-proxy.on('error', (err) => console.log('proxy error', err))
-    proxy.on('proxyReqWs', (req) => console.log('proxying ws', req.url))        } 
       },
     },
   },
