@@ -40,7 +40,7 @@ function isMobile(): boolean {
 
       <!-- Path Visualization (Red Line and Dot) -->
       <TresGroup :rotation="[-Math.PI / 2, 0, 0]">
-        <TresLine v-if="flattenedPoints.length > 0">
+        <TresLine v-if="flattenedPoints.length > 0" :key="flattenedPoints.length">
           <TresBufferGeometry>
             <TresBufferAttribute
               attach="attributes-position"

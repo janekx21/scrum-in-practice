@@ -26,10 +26,8 @@ watch(data, () => {
     })
   } else {
     const pose = JSON.parse(data.value) as {poses: number[][]}
-    for(const p of pose.poses) {
-      points.value.push(p)
-      console.log(points.value)
-    }
+    points.value = [...points.value, ...pose.poses]
+    console.log(points.value)
   }
 })
 
