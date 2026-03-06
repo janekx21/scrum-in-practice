@@ -8,6 +8,7 @@ const props = defineProps<{
   model_paths: string[]
   model_bytes: ArrayBuffer[]
   path_points?: number[][]
+  path_orientation?: number[]
 }>()
 
 // Flatten points for the TresLine geometry
@@ -58,6 +59,12 @@ function isMobile(): boolean {
         >
           <TresSphereGeometry :args="[0.05, 16, 16]" />
           <TresMeshBasicMaterial color="#ff0000" :depth-test="true" />
+
+          <TresMesh :quaternion="props.path_orientation">
+            <TresConeGeometry :args="[0.1, 0.3, 16]" :rotate-z="Math.PI / 2" :translate="[0.2,0,0]" />
+            <TresMeshBasicMaterial color="#00b020" :depth-test="true" />
+          </TresMesh>
+
         </TresMesh>
       </TresGroup>
     </TresCanvas>

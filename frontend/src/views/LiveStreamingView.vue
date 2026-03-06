@@ -15,7 +15,7 @@ const { status, data, send, open, close, ws } = useWebSocket(
 )
 
 const model_bytes = ref<{data: ArrayBuffer, time: number}[]>([])
-const points = shallowRef<{data: [x: number, y: number, z: number], time: number}[]>([])
+const points = shallowRef<{pos: [number, number, number], quat: [number, number, number, number], time: number}[]>([])
 const selectedChannel = ref<string | null>(null)
 const allStreams = ref<string[]>([])
 
@@ -47,12 +47,13 @@ watch(data, () => {
       })
     })
   } else {
-    const pose = JSON.parse(data.value) as {poses: number[][]}
-    for(const p of pose.poses) {
-      points.value = [...points.value, {
-        data: p as [number, number, number], time: time
-      }]
-    }
+    const pose = JSON.parse(data.value) as {poses: number[][], oriantations: number[][]}
+    const newPoints = pose.poses.map((p, i) => ({
+      pos: p as [number, number, number],
+      quat: pose.oriantations[i] as [number, number, number, number],
+      time: time
+    }))
+    points.value = [...points.value, ...newPoints]
   }
 })
 
@@ -84,8 +85,20 @@ const cut_model_bytes = computed(() => {
   return model_bytes.value.filter(({time}) => time <= playheadTime.value).map(({data}) => data)
 })
 
+// Filter all data that happened before or at the current playhead time
+const activeData = computed(() => {
+  return points.value.filter(({time}) => time <= playheadTime.value)
+})
+
+// Extract just the positions for the line
 const cut_points = computed(() => {
-  return points.value.filter(({time}) => time <= playheadTime.value).map(({data}) => data)
+  return activeData.value.map(({pos}) => pos)
+})
+
+// Extract the orientation of the very last visible point for the arrow
+const current_quat = computed(() => {
+  const lastEntry = activeData.value[activeData.value.length - 1]
+  return lastEntry ? lastEntry.quat : [0, 0, 0, 1]
 })
 
 const frame = computed(() => cut_model_bytes.value.length)
@@ -239,7 +252,7 @@ useRafFn(({delta}) => {
 
     <!-- 3D Viewport -->
     <div v-if="selectedChannel" class="w-100 h-100">
-      <MultiModelScene :path_points="cut_points"  :model_bytes="cut_model_bytes" :model_paths="[]"/>
+      <MultiModelScene :path_points="cut_points" :path_orientation="current_quat" :model_bytes="cut_model_bytes" :model_paths="[]"/>
     </div>
 
     <div v-else class="w-100 h-100 d-flex align-items-center justify-content-center text-secondary">
