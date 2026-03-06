@@ -1,49 +1,55 @@
 <script setup lang="ts">
-import { useWebSocket, useIntervalFn } from '@vueuse/core'
+import { useWebSocket, useIntervalFn, useRafFn } from '@vueuse/core'
 import { computed, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
 import MultiModelScene from '@/components/MultiModelScene.vue'
 import { fetchAllStrams, startStream } from '@/api/threeApi'
-
-const toggleStream = () => {
-  alert("Attempting to connect to EVOK hardware...")
-}
 
 const { status, data, send, open, close, ws } = useWebSocket(
   `ws:/localhost:8765/ws`, {
     autoReconnect: true,
   }
 )
-onMounted(() => open())
-watch(status, () => {
-  console.log(status)
-})
-watch(data, () => {
-  if (data.value instanceof Blob) {
-    data.value.arrayBuffer().then((b) => {
-      model_bytes.value.push(b)
-      if (playback.value == "live") {
-        frame.value += 1
-      }
-    })
-  } else {
-    try {
-      const pose = JSON.parse(data.value) as {poses: number[][]}
-      if (pose.poses) {
-        points.value = [...points.value, ...pose.poses]
-      }
-    } catch (e) {
-      console.error("JSON parse error", e)
-    }
-  }
-})
-
-const model_bytes = ref<ArrayBuffer[]>([])
-const points = shallowRef<number[][]>([[0,0,0], [0,0,1]])
+const model_bytes = ref<{data: ArrayBuffer, time: number}[]>([])
+const points = shallowRef<{data: [x: number, y: number, z: number], time: number}[]>([])
 const selectedChannel = ref<string | null>(null)
 const allStreams = ref<string[]>([])
 
-const frame = ref(0)
-const playback = ref<"live" | "pause" | "play" | "ff" | "fb" | "ff3x" | "fb3x">("live")
+const firstTime = ref(0)
+const playheadTime = ref(0)
+const playback = ref<"live" | "pause" | "play" | "ff" | "fb" | "ff" | "ff3x" |"fb3x">("live")
+
+onMounted(() => open())
+
+watch(status, () => {
+  console.log(status)
+})
+
+watch(data, () => {
+  const time = Date.now()
+  if (firstTime.value == 0) {
+    firstTime.value = time
+    playheadTime.value = time
+  }
+  if (playback.value == "live") {
+    playheadTime.value = time
+  }
+
+  if (data.value instanceof Blob) {
+    data.value.arrayBuffer().then((b) => {
+
+      model_bytes.value.push({
+        data: b, time: time
+      })
+    })
+  } else {
+    const pose = JSON.parse(data.value) as {poses: number[][]}
+    for(const p of pose.poses) {
+      points.value.push({
+        data: p as [number, number, number], time: time
+      })
+    }
+  }
+})
 
 function connectToStream(channel: string) {
   selectedChannel.value = channel
@@ -69,7 +75,11 @@ onUnmounted(() => {
 })
 
 const cut_model_bytes = computed(() => {
-  return model_bytes.value.slice(0, frame.value)
+  return model_bytes.value.filter(({time}) => time <= playheadTime.value).map(({data}) => data)
+})
+
+const cut_points = computed(() => {
+  return points.value.filter(({time}) => time <= playheadTime.value).map(({data}) => data)
 })
 
 function pause() {
@@ -92,54 +102,51 @@ function fastBackward3x() {
   playback.value = "fb3x"
 }
 
-useIntervalFn(() => {
+
+useRafFn(({delta}) => {
   if (playback.value == "play") {
-    frame.value += 1
-    if (frame.value >= model_bytes.value.length) {
-      frame.value = model_bytes.value.length
+    playheadTime.value += delta
+    if (playheadTime.value >= Date.now()) {
+      playheadTime.value = Date.now()
       playback.value = "live"
     }
   }
-}, 50);
 
-useIntervalFn(() => {
-  if (playback.value == "fb") {
-    frame.value -= 2
-    if (frame.value <= 0) {
-      frame.value = 0
-      playback.value = "pause"
-    }
-  }
-}, 10);
-useIntervalFn(() => {
-  if (playback.value == "fb3x") {
-    frame.value -= 3
-    if (frame.value <= 0) {
-      frame.value = 0
-      playback.value = "pause"
-    }
-  }
-}, 10);
-
-useIntervalFn(() => {
   if (playback.value == "ff") {
-    frame.value += 2
-    if (frame.value >= model_bytes.value.length) {
-      frame.value = model_bytes.value.length
+    playheadTime.value += delta * 2
+    if (playheadTime.value >= Date.now()) {
+      playheadTime.value = Date.now()
       playback.value = "live"
     }
   }
-}, 10);
 
-useIntervalFn(() => {
   if (playback.value == "ff3x") {
-    frame.value += 3
-    if (frame.value >= model_bytes.value.length) {
-      frame.value = model_bytes.value.length
+    playheadTime.value += delta * 3
+    if (playheadTime.value >= Date.now()) {
+      playheadTime.value = Date.now()
       playback.value = "live"
     }
   }
-}, 10);
+
+  if (playback.value == "fb") {
+    playheadTime.value -= delta * 2
+    if (playheadTime.value <= firstTime.value) {
+      playheadTime.value = firstTime.value
+      playback.value = "pause"
+    }
+  }
+
+  if (playback.value == "fb3x") {
+    playheadTime.value -= delta * 3
+    if (playheadTime.value <= firstTime.value) {
+      playheadTime.value = firstTime.value
+      playback.value = "pause"
+    }
+  }
+})
+
+
+
 </script>
 
 <template>
@@ -224,7 +231,7 @@ useIntervalFn(() => {
 
     <!-- 3D Viewport -->
     <div v-if="selectedChannel" class="w-100 h-100">
-      <MultiModelScene :path_points="points" :model_bytes="cut_model_bytes" :model_paths="[]"/>
+      <MultiModelScene :path_points="cut_points"  :model_bytes="cut_model_bytes" :model_paths="[]"/>
     </div>
 
     <div v-else class="w-100 h-100 d-flex align-items-center justify-content-center text-secondary">
