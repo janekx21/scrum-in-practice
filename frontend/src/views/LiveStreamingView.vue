@@ -96,9 +96,9 @@ const cut_points = computed(() => {
 })
 
 // Extract the orientation of the very last visible point for the arrow
-const current_quat = computed(() => {
+const current_quat = computed<[number,number,number,number]>(() => {
   const lastEntry = activeData.value[activeData.value.length - 1]
-  return lastEntry ? lastEntry.quat : [0, 0, 0, 1]
+  return lastEntry ? lastEntry.quat as [number,number,number,number] : [0, 0, 0, 1]
 })
 
 const frame = computed(() => cut_model_bytes.value.length)

@@ -8,7 +8,7 @@ const props = defineProps<{
   model_paths: string[]
   model_bytes: ArrayBuffer[]
   path_points?: number[][]
-  path_orientation?: number[]
+  path_orientation?: [number,number,number,number]
 }>()
 
 // Flatten points for the TresLine geometry
