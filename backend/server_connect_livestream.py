@@ -274,7 +274,6 @@ async def run_stream_client(channel):
         datasets = parse_list_response_to_array(resp)
         print("Datasets:", datasets)
 
-        # TODO decide on what stream we want to go with
         if channel not in datasets:
             print("Unexpected channel name")
             return

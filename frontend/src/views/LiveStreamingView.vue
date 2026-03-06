@@ -5,7 +5,7 @@ import MultiModelScene from '@/components/MultiModelScene.vue'
 import { fetchAllStrams, startStream } from '@/api/threeApi'
 
 const { status, data, send, open, close, ws } = useWebSocket(
-  `ws:/localhost:8765/ws`, {
+  `ws:/localhost:9001/ws`, {
     autoReconnect: true,
   }
 )
@@ -53,7 +53,8 @@ watch(data, () => {
 
 function connectToStream(channel: string) {
   selectedChannel.value = channel
-  startStream(channel)
+  send(channel)
+  //startStream(channel)
 }
 
 onMounted(() => {
