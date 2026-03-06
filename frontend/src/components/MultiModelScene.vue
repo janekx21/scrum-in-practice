@@ -61,8 +61,8 @@ function isMobile(): boolean {
           <TresMeshBasicMaterial color="#ff0000" :depth-test="true" />
 
           <TresMesh :quaternion="props.path_orientation">
-            <TresConeGeometry :args="[0.04, 0.2, 16]" />
-            <TresMeshBasicMaterial color="#ff0000" :depth-test="true" />
+            <TresConeGeometry :args="[0.1, 0.3, 16]" :rotate-z="Math.PI / 2" :translate="[0.2,0,0]" />
+            <TresMeshBasicMaterial color="#00b020" :depth-test="true" />
           </TresMesh>
 
         </TresMesh>
