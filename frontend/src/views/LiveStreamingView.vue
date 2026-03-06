@@ -4,11 +4,16 @@ import { computed, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
 import MultiModelScene from '@/components/MultiModelScene.vue'
 import { fetchAllStrams, startStream } from '@/api/threeApi'
 
+// DYNAMIC WEBSOCKET URL CONSTRUCTION
+const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+const wsUrl = `${protocol}//${window.location.host}/ws`;
+
 const { status, data, send, open, close, ws } = useWebSocket(
-  `ws:/localhost:8765/ws`, {
+  wsUrl, {
     autoReconnect: true,
   }
 )
+
 const model_bytes = ref<{data: ArrayBuffer, time: number}[]>([])
 const points = shallowRef<{data: [x: number, y: number, z: number], time: number}[]>([])
 const selectedChannel = ref<string | null>(null)
@@ -81,6 +86,8 @@ const cut_model_bytes = computed(() => {
 const cut_points = computed(() => {
   return points.value.filter(({time}) => time <= playheadTime.value).map(({data}) => data)
 })
+
+const frame = computed(() => cut_model_bytes.value.length)
 
 function pause() {
   playback.value = "pause"

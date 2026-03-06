@@ -328,7 +328,7 @@ async def run_stream_server(channel):
         # task.cancel()
 
     print("running ws server")
-    async with serve(echo, "localhost", 8765) as server:
+    async with serve(echo, "0.0.0.0", 9001) as server:
         print("Now serving ", server.is_serving())
         await server.serve_forever() 
 

@@ -1,14 +1,10 @@
-
 services:
-
   traefik:
     image: traefik:v3.2
     container_name: traefik
     command:
       - "--api.dashboard=true"
       - "--api.insecure=true"
-      - "--api=true"
-      - "--log.level=DEBUG"
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
       - "--entrypoints.web.address=:80"
@@ -16,13 +12,7 @@ services:
       - "80:80"
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.dashboard.service=api@internal"
-      - "traefik.http.routers.dashboard.entrypoints=web"
     restart: unless-stopped
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
 
   frontend:
     build:
@@ -33,8 +23,10 @@ services:
       - "80"
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.frontend.entrypoints=web"
       - "traefik.http.routers.frontend.rule=PathPrefix(`/`)"
+      - "traefik.http.routers.frontend.entrypoints=web"
+      # Lowest priority ensures this only catches what backend doesn't
+      - "traefik.http.routers.frontend.priority=1"
       - "traefik.http.services.frontend.loadbalancer.server.port=80"
     restart: unless-stopped
     depends_on:
@@ -47,6 +39,7 @@ services:
     container_name: backend
     expose:
       - "5001"
+      - "9001"
     environment:
       - FLASK_ENV=production
       - DATABASE_PATH=/data/db.sqlite3
@@ -54,11 +47,26 @@ services:
       - backend-data:/data
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.backend.rule=PathPrefix(`/api`)"
-      - "traefik.http.routers.backend.entrypoints=web"
+
+      # 1. REST API (/api)
+      - "traefik.http.routers.backend-rest.rule=PathPrefix(`/api`)"
+      - "traefik.http.routers.backend-rest.entrypoints=web"
+      - "traefik.http.routers.backend-rest.priority=100"
+      - "traefik.http.routers.backend-rest.middlewares=strip-api"
+      - "traefik.http.routers.backend-rest.service=backend-rest-svc"
+      - "traefik.http.services.backend-rest-svc.loadbalancer.server.port=5001"
+
+      # 2. WEBSOCKETS (/ws)
+      - "traefik.http.routers.backend-ws.rule=PathPrefix(`/ws`)"
+      - "traefik.http.routers.backend-ws.entrypoints=web"
+      - "traefik.http.routers.backend-ws.priority=100"
+      - "traefik.http.routers.backend-ws.middlewares=strip-ws"
+      - "traefik.http.routers.backend-ws.service=backend-ws-svc"
+      - "traefik.http.services.backend-ws-svc.loadbalancer.server.port=9001"
+
+      # Middlewares
       - "traefik.http.middlewares.strip-api.stripprefix.prefixes=/api"
-      - "traefik.http.routers.backend.middlewares=strip-api"
-      - "traefik.http.services.backend.loadbalancer.server.port=5001"
+      - "traefik.http.middlewares.strip-ws.stripprefix.prefixes=/ws"
     restart: unless-stopped
 
 volumes:
