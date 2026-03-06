@@ -58,7 +58,8 @@ watch(data, () => {
 
 function connectToStream(channel: string) {
   selectedChannel.value = channel
-  startStream(channel)
+  send(channel)
+  //startStream(channel)
 }
 
 onMounted(() => {
