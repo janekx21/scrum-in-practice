@@ -65,7 +65,7 @@ onMounted(() => {
 watch(selectedChannel, () => {
   if (selectedChannel.value == null) {
     model_bytes.value = []
-    points.value = [[0,0,0], [0,0,1]]
+    points.value = []
     close()
   }
 })
