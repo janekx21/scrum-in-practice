@@ -21,7 +21,7 @@ const allStreams = ref<string[]>([])
 
 const firstTime = ref(0)
 const playheadTime = ref(0)
-const playback = ref<"live" | "pause" | "play" | "ff" | "fb" | "ff" | "ff3x" |"fb3x">("live")
+const playback = ref<"live" | "pause" | "play" | "back" | "ff" | "fb" | "ff" | "ff3x" |"fb3x">("live")
 
 onMounted(() => open())
 
@@ -110,6 +110,9 @@ function pause() {
 function play() {
   playback.value = "play"
 }
+function back() {
+  playback.value = "back"
+}
 function fastForward() {
   playback.value = "ff"
 }
@@ -149,6 +152,13 @@ useRafFn(({delta}) => {
     }
   }
 
+  if (playback.value == "back") {
+    playheadTime.value -= delta
+    if (playheadTime.value <= firstTime.value) {
+      playheadTime.value = firstTime.value
+      playback.value = "pause"
+    }
+  }
   if (playback.value == "fb") {
     playheadTime.value -= delta * 2
     if (playheadTime.value <= firstTime.value) {
@@ -222,8 +232,12 @@ useRafFn(({delta}) => {
                 <span class="speed-label">3x</span><span class="icon">⏪</span>
               </button>
 
-              <button @click="fastBackward()" class="pb-btn" :class="{active: playback == 'fb'}" title="Backward 1x">
+              <button @click="fastBackward()" class="pb-btn" :class="{active: playback == 'fb'}" title="Backward 2x">
                 <span class="icon">⏪</span>
+              </button>
+
+              <button @click="back()" class="pb-btn" :class="{active: playback == 'back'}" title="Backward 1x">
+                <span class="icon">🔙</span>
               </button>
 
               <button v-if="playback != 'pause'" @click="pause()" class="pb-btn main-action" title="Pause">
@@ -233,7 +247,7 @@ useRafFn(({delta}) => {
                 <span class="icon">▶</span>
               </button>
 
-              <button @click="fastForward()" class="pb-btn" :class="{active: playback == 'ff'}" title="Forward 1x">
+              <button @click="fastForward()" class="pb-btn" :class="{active: playback == 'ff'}" title="Forward 2x">
                 <span class="icon">⏩</span>
               </button>
 
