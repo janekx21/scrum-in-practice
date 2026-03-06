@@ -10,7 +10,7 @@ const toggleStream = () => {
 }
 
 const { status, data, send, open, close, ws } = useWebSocket(
-  `ws:/localhost:8765/ws`, {
+  `ws:/localhost:9001/ws`, {
     autoReconnect: true,
   }
 )
@@ -42,7 +42,8 @@ const frameTrigger = 0
 
 function connectToStream(channel: string) {
   selectedChannel.value = channel
-  startStream(channel)
+  send(channel)
+  //startStream(channel)
 }
 
 
