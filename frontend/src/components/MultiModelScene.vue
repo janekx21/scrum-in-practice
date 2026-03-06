@@ -54,7 +54,7 @@ function isMobile(): boolean {
 
         <TresMesh 
           v-if="props.path_points && props.path_points.length > 0" 
-          :position="props.path_points[props.path_points.length - 1]"
+          :position="(props.path_points[props.path_points.length - 1]as any)"
         >
           <TresSphereGeometry :args="[0.05, 16, 16]" />
           <TresMeshBasicMaterial color="#ff0000" :depth-test="true" />
