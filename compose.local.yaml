@@ -31,6 +31,7 @@ services:
     restart: unless-stopped
     depends_on:
       - backend
+      - wsbackend
 
   backend:
     build:
@@ -39,7 +40,6 @@ services:
     container_name: backend
     expose:
       - "5001"
-      - "9001"
     environment:
       - FLASK_ENV=production
       - DATABASE_PATH=/data/db.sqlite3
@@ -56,6 +56,23 @@ services:
       - "traefik.http.routers.backend-rest.service=backend-rest-svc"
       - "traefik.http.services.backend-rest-svc.loadbalancer.server.port=5001"
 
+
+      # Middlewares
+      - "traefik.http.middlewares.strip-api.stripprefix.prefixes=/api"
+    restart: unless-stopped
+
+  wsbackend:
+    build:
+      context: ./wsbackend
+      dockerfile: Dockerfile
+    container_name: wsbackend
+    expose:
+      - "9001"
+    volumes:
+      - wsbackend-data:/data
+    labels:
+      - "traefik.enable=true"
+
       # 2. WEBSOCKETS (/ws)
       - "traefik.http.routers.backend-ws.rule=PathPrefix(`/ws`)"
       - "traefik.http.routers.backend-ws.entrypoints=web"
@@ -65,9 +82,9 @@ services:
       - "traefik.http.services.backend-ws-svc.loadbalancer.server.port=9001"
 
       # Middlewares
-      - "traefik.http.middlewares.strip-api.stripprefix.prefixes=/api"
       - "traefik.http.middlewares.strip-ws.stripprefix.prefixes=/ws"
     restart: unless-stopped
 
 volumes:
   backend-data:
+  wsbackend-data:
